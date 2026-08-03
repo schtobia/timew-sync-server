@@ -18,6 +18,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 package sync
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -25,6 +26,10 @@ import (
 	"github.com/timewarrior-synchronize/timew-sync-server/data"
 	"github.com/timewarrior-synchronize/timew-sync-server/storage"
 )
+
+// maxRequestBodySize bounds the size of sync request bodies (1 MiB) to
+// prevent memory exhaustion through oversized requests.
+const maxRequestBodySize = 1 << 20
 
 type ServerConfig struct {
 	Store       storage.Storage
@@ -41,9 +46,18 @@ func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	requestBody, err := io.ReadAll(req.Body)
+	requestBody, err := io.ReadAll(http.MaxBytesReader(w, req.Body, maxRequestBodySize))
 	if err != nil {
 		log.Printf("Error reading HTTP request, ignoring request: %v", err)
+
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			errorResponse := ErrorResponseBody{
+				Message: "Request body too large",
+				Details: "",
+			}
+			sendResponse(w, http.StatusRequestEntityTooLarge, errorResponse.ToString())
+		}
 
 		return
 	}

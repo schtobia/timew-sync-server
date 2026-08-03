@@ -20,6 +20,7 @@ package sync
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -38,5 +39,19 @@ func TestSendResponse(t *testing.T) {
 	if rr.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), expected)
+	}
+}
+
+func TestHandleSyncRequest_bodyTooLarge(t *testing.T) {
+	body := strings.NewReader(strings.Repeat("x", maxRequestBodySize+1))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/sync", body)
+	rr := httptest.NewRecorder()
+
+	cfg := &ServerConfig{}
+	HandleSyncRequest(cfg, rr, req)
+
+	if status := rr.Code; status != http.StatusRequestEntityTooLarge {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusRequestEntityTooLarge)
 	}
 }
