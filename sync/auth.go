@@ -24,9 +24,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 
 	"github.com/timewarrior-synchronize/timew-sync-server/data"
 )
@@ -54,24 +54,23 @@ func Authenticate(r *http.Request, body data.SyncRequest, keyLocation string) bo
 // given key set.
 func AuthenticateWithKeySet(r *http.Request, userID int64, keySet jwk.Set) bool {
 	for i := range keySet.Len() {
-		key, ok := keySet.Get(i)
+		key, ok := keySet.Key(i)
 		if !ok {
 			continue
 		}
 
 		token, err := jwt.ParseHeader(r.Header, "Authorization", jwt.WithValidate(true),
-			jwt.WithVerify(jwa.RS256, key), jwt.WithAcceptableSkew(acceptableSkew))
+			jwt.WithKey(jwa.RS256(), key), jwt.WithAcceptableSkew(acceptableSkew))
 		if err != nil {
 			continue
 		}
 
-		id, ok := token.Get("userID")
-		if !ok {
+		var presumedUserID float64
+		if err := token.Get("userID", &presumedUserID); err != nil {
 			continue
 		}
 
-		presumedUserID, ok := id.(float64)
-		if !ok || int64(presumedUserID) != userID {
+		if int64(presumedUserID) != userID {
 			continue
 		}
 

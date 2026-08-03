@@ -32,18 +32,21 @@ linters:
             - github.com/DATA-DOG/go-sqlmock
             - github.com/golang-migrate/migrate/v4
             - github.com/google/go-cmp
-            - github.com/lestrrat-go/jwx
+            - github.com/lestrrat-go/jwx/v3
             - github.com/mattn/go-sqlite3
             - github.com/decred/dcrd/dcrec/secp256k1/v4
             - github.com/goccy/go-json
-            - github.com/lestrrat-go/backoff/v2
             - github.com/lestrrat-go/blackmagic
+            - github.com/lestrrat-go/dsig
+            - github.com/lestrrat-go/dsig-secp256k1
             - github.com/lestrrat-go/httpcc
-            - github.com/lestrrat-go/iter
-            - github.com/lestrrat-go/option
+            - github.com/lestrrat-go/httprc/v3
+            - github.com/lestrrat-go/option/v2
+            - github.com/segmentio/asm
             - github.com/timewarrior-synchronize/timew-sync-server
-            - github.com/pkg/errors
+            - github.com/valyala/fastjson
             - golang.org/x/crypto
+            - golang.org/x/sys
     paralleltest:
       ignore-missing: true
       ignore-missing-subtests: true

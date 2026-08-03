@@ -25,21 +25,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 )
 
 func TestAuthenticateWithKeySet_positive(t *testing.T) {
-	raw1, err1 := rsa.GenerateKey(rand.Reader, 1024)
-	raw2, err2 := rsa.GenerateKey(rand.Reader, 1024)
-	key1, err3 := jwk.New(raw1)
-	key2, err4 := jwk.New(raw2)
+	raw1, err1 := rsa.GenerateKey(rand.Reader, 2048)
+	raw2, err2 := rsa.GenerateKey(rand.Reader, 2048)
+	key1, err3 := jwk.Import(raw1)
+	key2, err4 := jwk.Import(raw2)
 	pub1, err5 := jwk.PublicKeyOf(key1)
 	pub2, err6 := jwk.PublicKeyOf(key2)
 	keySet := jwk.NewSet()
-	keySet.Add(pub1)
-	keySet.Add(pub2)
+	err7 := keySet.AddKey(pub1)
+	err8 := keySet.AddKey(pub2)
 
 	token := jwt.New()
 	if err := token.Set("userID", 42); err != nil {
@@ -50,13 +50,13 @@ func TestAuthenticateWithKeySet_positive(t *testing.T) {
 		t.Fatalf("token.Set expiration: %v", err)
 	}
 
-	payload, err7 := jwt.Sign(token, jwa.RS256, key2)
+	payload, err9 := jwt.Sign(token, jwt.WithKey(jwa.RS256(), key2))
 	bearer := "Bearer " + string(payload)
-	req, err8 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
+	req, err10 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
 	req.Header.Add("Authorization", bearer)
 
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil || err6 != nil || err7 != nil ||
-		err8 != nil {
+		err8 != nil || err9 != nil || err10 != nil {
 		t.Errorf("Failed to generate key set in preparation for testing")
 	}
 
@@ -67,13 +67,13 @@ func TestAuthenticateWithKeySet_positive(t *testing.T) {
 }
 
 func TestAuthenticateWithKeySet_negative(t *testing.T) {
-	raw1, err1 := rsa.GenerateKey(rand.Reader, 1024)
-	raw2, err2 := rsa.GenerateKey(rand.Reader, 1024)
-	key1, err3 := jwk.New(raw1)
-	key2, err4 := jwk.New(raw2)
+	raw1, err1 := rsa.GenerateKey(rand.Reader, 2048)
+	raw2, err2 := rsa.GenerateKey(rand.Reader, 2048)
+	key1, err3 := jwk.Import(raw1)
+	key2, err4 := jwk.Import(raw2)
 	pub1, err5 := jwk.PublicKeyOf(key1)
 	keySet := jwk.NewSet()
-	keySet.Add(pub1)
+	err7 := keySet.AddKey(pub1)
 
 	token := jwt.New()
 	if err := token.Set("userID", 42); err != nil {
@@ -84,13 +84,13 @@ func TestAuthenticateWithKeySet_negative(t *testing.T) {
 		t.Fatalf("token.Set expiration: %v", err)
 	}
 
-	payload, err7 := jwt.Sign(token, jwa.RS256, key2)
+	payload, err9 := jwt.Sign(token, jwt.WithKey(jwa.RS256(), key2))
 	bearer := "Bearer " + string(payload)
-	req, err8 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
+	req, err10 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
 	req.Header.Add("Authorization", bearer)
 
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil || err7 != nil ||
-		err8 != nil {
+		err9 != nil || err10 != nil {
 		t.Errorf("Failed to generate key set in preparation for testing")
 	}
 
@@ -101,15 +101,15 @@ func TestAuthenticateWithKeySet_negative(t *testing.T) {
 }
 
 func TestAuthenticateWithKeySet_expired(t *testing.T) {
-	raw1, err1 := rsa.GenerateKey(rand.Reader, 1024)
-	raw2, err2 := rsa.GenerateKey(rand.Reader, 1024)
-	key1, err3 := jwk.New(raw1)
-	key2, err4 := jwk.New(raw2)
+	raw1, err1 := rsa.GenerateKey(rand.Reader, 2048)
+	raw2, err2 := rsa.GenerateKey(rand.Reader, 2048)
+	key1, err3 := jwk.Import(raw1)
+	key2, err4 := jwk.Import(raw2)
 	pub1, err5 := jwk.PublicKeyOf(key1)
 	pub2, err6 := jwk.PublicKeyOf(key2)
 	keySet := jwk.NewSet()
-	keySet.Add(pub1)
-	keySet.Add(pub2)
+	err7 := keySet.AddKey(pub1)
+	err8 := keySet.AddKey(pub2)
 
 	token := jwt.New()
 	if err := token.Set("userID", 42); err != nil {
@@ -120,13 +120,13 @@ func TestAuthenticateWithKeySet_expired(t *testing.T) {
 		t.Fatalf("token.Set expiration: %v", err)
 	}
 
-	payload, err7 := jwt.Sign(token, jwa.RS256, key2)
+	payload, err9 := jwt.Sign(token, jwt.WithKey(jwa.RS256(), key2))
 	bearer := "Bearer " + string(payload)
-	req, err8 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
+	req, err10 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
 	req.Header.Add("Authorization", bearer)
 
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil || err6 != nil || err7 != nil ||
-		err8 != nil {
+		err8 != nil || err9 != nil || err10 != nil {
 		t.Errorf("Failed to generate key set in preparation for testing")
 	}
 
@@ -137,15 +137,15 @@ func TestAuthenticateWithKeySet_expired(t *testing.T) {
 }
 
 func TestAuthenticateWithKeySet_IDMismatch(t *testing.T) {
-	raw1, err1 := rsa.GenerateKey(rand.Reader, 1024)
-	raw2, err2 := rsa.GenerateKey(rand.Reader, 1024)
-	key1, err3 := jwk.New(raw1)
-	key2, err4 := jwk.New(raw2)
+	raw1, err1 := rsa.GenerateKey(rand.Reader, 2048)
+	raw2, err2 := rsa.GenerateKey(rand.Reader, 2048)
+	key1, err3 := jwk.Import(raw1)
+	key2, err4 := jwk.Import(raw2)
 	pub1, err5 := jwk.PublicKeyOf(key1)
 	pub2, err6 := jwk.PublicKeyOf(key2)
 	keySet := jwk.NewSet()
-	keySet.Add(pub1)
-	keySet.Add(pub2)
+	err7 := keySet.AddKey(pub1)
+	err8 := keySet.AddKey(pub2)
 
 	token := jwt.New()
 	if err := token.Set("userID", 42); err != nil {
@@ -156,13 +156,13 @@ func TestAuthenticateWithKeySet_IDMismatch(t *testing.T) {
 		t.Fatalf("token.Set expiration: %v", err)
 	}
 
-	payload, err7 := jwt.Sign(token, jwa.RS256, key2)
+	payload, err9 := jwt.Sign(token, jwt.WithKey(jwa.RS256(), key2))
 	bearer := "Bearer " + string(payload)
-	req, err8 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
+	req, err10 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
 	req.Header.Add("Authorization", bearer)
 
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil || err6 != nil || err7 != nil ||
-		err8 != nil {
+		err8 != nil || err9 != nil || err10 != nil {
 		t.Errorf("Failed to generate key set in preparation for testing")
 	}
 
