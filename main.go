@@ -32,58 +32,64 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var (
-	versionFlag      bool
-	configFilePath   string
-	portNumber       int
-	keyDirectoryPath string
-	dbPath           string
-	noAuth           bool
-	sourcePath       string
-	userID           int64
-)
+const version = "1.2.0"
 
 func main() {
-	startCmd := flag.NewFlagSet("start", flag.ExitOnError)
-	addUserCmd := flag.NewFlagSet("add-user", flag.ExitOnError)
-	addKeyCmd := flag.NewFlagSet("add-key", flag.ExitOnError)
+	os.Exit(realMain(os.Args))
+}
 
-	startCmd.StringVar(&configFilePath, "config-file", "", "[RESERVED, not used] Path to the configuration file")
-	startCmd.IntVar(&portNumber, "port", 8080, "Port on which the server will listen for connections")
-	startCmd.StringVar(&keyDirectoryPath, "keys-location", "authorized_keys", "Path to the users' public keys")
-	startCmd.StringVar(&dbPath, "sqlite-db", "db.sqlite", "Path to the SQLite database")
-	startCmd.BoolVar(&noAuth, "no-auth", false, "Run server without client authentication")
-
-	addUserCmd.StringVar(&sourcePath, "path", "", "Supply the path to a PEM RSA key")
-	addUserCmd.StringVar(&keyDirectoryPath, "keys-location", "authorized_keys", "Path to the users' public keys")
-
-	addKeyCmd.StringVar(&sourcePath, "path", "", "Supply the path to a PEM RSA key")
-	addKeyCmd.Int64Var(&userID, "id", -1, "Supply user id")
-	addKeyCmd.StringVar(&keyDirectoryPath, "keys-location", "authorized_keys", "Path to the users' public keys")
-
-	flag.BoolVar(&versionFlag, "version", false, "Print version information")
-
-	if len(os.Args) < 2 {
+// realMain contains the actual CLI dispatch logic so it can be tested
+// without running os.Exit directly in the test process. It returns the
+// exit code that main should pass to os.Exit.
+func realMain(args []string) int {
+	if len(args) < 2 {
 		_, _ = fmt.Fprintf(os.Stderr, "Use commands start, add-user or add-key\n")
-		os.Exit(1)
+		return 1
 	}
 
-	switch os.Args[1] {
+	switch args[1] {
 	case "start":
-		_ = startCmd.Parse(os.Args[2:])
+		runStart(args[2:])
+		return 0
 	case "add-user":
-		addUserCase(addUserCmd)
+		return runAddUser(args[2:])
 	case "add-key":
-		addKeyCase(addKeyCmd)
+		return runAddKey(args[2:])
 	default:
-		flag.Parse()
-		if versionFlag {
-			_, _ = fmt.Fprintf(os.Stderr, "timewarrior sync server version %v\n", "1.2.0")
-			os.Exit(0)
-		} else {
-			log.Fatal("Use commands start, add-user or add-key")
+		var versionFlag bool
+		cmd := flag.NewFlagSet("version", flag.ContinueOnError)
+		cmd.SetOutput(os.Stderr)
+		cmd.BoolVar(&versionFlag, "version", false, "Print version information")
+		if err := cmd.Parse(args[1:]); err != nil {
+			return 1
 		}
+		if versionFlag {
+			_, _ = fmt.Fprintf(os.Stderr, "timewarrior sync server version %v\n", version)
+			return 0
+		}
+		_, _ = fmt.Fprintln(os.Stderr, "Use commands start, add-user or add-key")
+		return 1
 	}
+}
+
+// runStart starts the sync server.
+func runStart(args []string) {
+	var (
+		configFilePath   string
+		portNumber       int
+		keyDirectoryPath string
+		dbPath           string
+		noAuth           bool
+	)
+
+	cmd := flag.NewFlagSet("start", flag.ExitOnError)
+	cmd.StringVar(&configFilePath, "config-file", "", "[RESERVED, not used] Path to the configuration file")
+	cmd.StringVar(&dbPath, "sqlite-db", "db.sqlite", "Path to the SQLite database")
+	cmd.IntVar(&portNumber, "port", 8080, "Port on which the server will listen for connections")
+	cmd.StringVar(&keyDirectoryPath, "keys-location", "authorized_keys", "Path to the users' public keys")
+	cmd.BoolVar(&noAuth, "no-auth", false, "Run server without client authentication")
+	_ = cmd.Parse(args)
+	_ = configFilePath
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -92,8 +98,7 @@ func main() {
 	defer db.Close()
 	sqlStorage := &storage.Sql{DB: db}
 
-	err = sqlStorage.Initialize()
-	if err != nil {
+	if err := sqlStorage.Initialize(); err != nil {
 		log.Fatalf("Error while initializing database: %v", err)
 	}
 
@@ -124,9 +129,18 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-// Subcommand for adding a new user
-func addUserCase(addUserCmd *flag.FlagSet) {
-	_ = addUserCmd.Parse(os.Args[2:])
+// runAddUser adds a new user. Returns the exit code.
+func runAddUser(args []string) int {
+	var (
+		sourcePath       string
+		keyDirectoryPath string
+	)
+
+	cmd := flag.NewFlagSet("add-user", flag.ExitOnError)
+	cmd.StringVar(&sourcePath, "path", "", "Supply the path to a PEM RSA key")
+	cmd.StringVar(&keyDirectoryPath, "keys-location", "authorized_keys", "Path to the users' public keys")
+	_ = cmd.Parse(args)
+
 	id := sync.GetFreeUserID(keyDirectoryPath)
 	if sourcePath == "" {
 		sync.AddKey(keyDirectoryPath, id, "")
@@ -135,24 +149,39 @@ func addUserCase(addUserCmd *flag.FlagSet) {
 		sync.AddKey(keyDirectoryPath, id, key)
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "Successfully added new user %v", id)
-	os.Exit(0)
+	return 0
 }
 
-// Subcommand for adding a new key
-func addKeyCase(addKeyCmd *flag.FlagSet) {
-	_ = addKeyCmd.Parse(os.Args[2:])
+// runAddKey adds a new key to an existing user. Returns the exit code
+// (non-zero if validation fails).
+func runAddKey(args []string) int {
+	var (
+		sourcePath       string
+		userID           int64
+		keyDirectoryPath string
+	)
+
+	cmd := flag.NewFlagSet("add-key", flag.ExitOnError)
+	cmd.StringVar(&sourcePath, "path", "", "Supply the path to a PEM RSA key")
+	cmd.Int64Var(&userID, "id", -1, "Supply user id")
+	cmd.StringVar(&keyDirectoryPath, "keys-location", "authorized_keys", "Path to the users' public keys")
+	_ = cmd.Parse(args)
+
 	if sourcePath == "" {
-		log.Fatal("Provide a key file with --path [path-to-key-file]")
+		_, _ = fmt.Fprintln(os.Stderr, "Provide a key file with --path [path-to-key-file]")
+		return 1
 	}
 	if userID < 0 {
-		log.Fatal("Provide a non-negative user id with --id [user id]")
+		_, _ = fmt.Fprintln(os.Stderr, "Provide a non-negative user id with --id [user id]")
+		return 1
 	}
 	used := sync.GetUsedUserIDs(keyDirectoryPath)
 	if !used[userID] {
-		log.Fatalf("User %v does not exist", userID)
+		_, _ = fmt.Fprintf(os.Stderr, "User %v does not exist\n", userID)
+		return 1
 	}
 	key := sync.ReadKey(sourcePath)
 	sync.AddKey(keyDirectoryPath, userID, key)
 	_, _ = fmt.Fprintf(os.Stderr, "Successfully added new key to user %v", userID)
-	os.Exit(0)
+	return 0
 }

@@ -71,15 +71,15 @@ func AuthenticateWithKeySet(r *http.Request, userID int64, keySet jwk.Set) bool 
 	return false
 }
 
-// GetKeySet returns the key set of user with a given userId. Returns an error if the keys file of that user was not
+// GetKeySet returns the key set of user with a given userID. Returns an error if the keys file of that user was not
 // found or could not be parsed.
-func GetKeySet(userId int64, keyLocation string) (jwk.Set, error) {
-	filename := fmt.Sprintf("%d_keys", userId)
+func GetKeySet(userID int64, keyLocation string) (jwk.Set, error) {
+	filename := fmt.Sprintf("%d_keys", userID)
 	path := filepath.Join(keyLocation, filename)
 
 	keySet, err := jwk.ReadFile(path, jwk.WithPEM(true))
 	if err != nil {
-		log.Printf("Error parsing key set of user %d: %v", userId, err)
+		log.Printf("Error parsing key set of user %d: %v", userID, err)
 		return nil, err
 	}
 

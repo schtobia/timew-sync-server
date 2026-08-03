@@ -26,7 +26,18 @@ import (
 	"github.com/timewarrior-synchronize/timew-sync-server/storage"
 )
 
-func elementwiseEqual(aSlice []data.Interval, bSlice []data.Interval) bool {
+// mustSetup initializes store and sets intervals for uid, failing t on any error.
+func mustSetup(t *testing.T, store storage.Storage, uid storage.UserId, intervals []data.Interval) {
+	t.Helper()
+	if err := store.Initialize(); err != nil {
+		t.Fatalf("store.Initialize: %v", err)
+	}
+	if err := store.SetIntervals(uid, intervals); err != nil {
+		t.Fatalf("store.SetIntervals: %v", err)
+	}
+}
+
+func elementwiseEqual(aSlice, bSlice []data.Interval) bool {
 	keyA := storage.ConvertToKeys(aSlice)
 	keyB := storage.ConvertToKeys(bSlice)
 	if len(keyA) != len(keyB) {
@@ -136,8 +147,7 @@ func TestSolveConflict_MultiConflict(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	store.Initialize()
-	store.SetIntervals(storage.UserId(0), serverStateMultiConflict)
+	mustSetup(t, &store, storage.UserId(0), serverStateMultiConflict)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
@@ -215,8 +225,7 @@ func TestSolveConflict_InnerInterval(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	store.Initialize()
-	store.SetIntervals(storage.UserId(0), serverInnerInterval)
+	mustSetup(t, &store, storage.UserId(0), serverInnerInterval)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
@@ -286,8 +295,7 @@ func TestSolveConflict_SameEnd(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	store.Initialize()
-	store.SetIntervals(storage.UserId(0), serverStateSameEnd)
+	mustSetup(t, &store, storage.UserId(0), serverStateSameEnd)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
@@ -357,8 +365,7 @@ func TestSolveConflict_SameStart(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	store.Initialize()
-	store.SetIntervals(storage.UserId(0), serverStateSameStart)
+	mustSetup(t, &store, storage.UserId(0), serverStateSameStart)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
@@ -422,8 +429,7 @@ func TestSolveConflict_Congruent(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	store.Initialize()
-	store.SetIntervals(storage.UserId(0), serverStateCongruent)
+	mustSetup(t, &store, storage.UserId(0), serverStateCongruent)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
@@ -499,8 +505,7 @@ func TestSolveConflict_Overlap(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	store.Initialize()
-	store.SetIntervals(storage.UserId(0), serverStateOverlap)
+	mustSetup(t, &store, storage.UserId(0), serverStateOverlap)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
@@ -531,8 +536,7 @@ func TestSolveConflict_NoConflicts(t *testing.T) {
 			Annotation: "b",
 		},
 	}
-	store.Initialize()
-	store.SetIntervals(storage.UserId(0), serverStateNoConflicts)
+	mustSetup(t, &store, storage.UserId(0), serverStateNoConflicts)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
@@ -551,8 +555,7 @@ func TestSolveConflict_NoIntervals(t *testing.T) {
 	store := storage.Ephemeral{}
 	serverStateNoIntervals := []data.Interval{}
 
-	store.Initialize()
-	store.SetIntervals(storage.UserId(0), serverStateNoIntervals)
+	mustSetup(t, &store, storage.UserId(0), serverStateNoIntervals)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
@@ -584,7 +587,7 @@ func (r *recordingStorage) RemoveInterval(userId storage.UserId, interval data.I
 	return r.Ephemeral.RemoveInterval(userId, interval)
 }
 
-func (r *recordingStorage) ModifyIntervals(userId storage.UserId, add []data.Interval, del []data.Interval) error {
+func (r *recordingStorage) ModifyIntervals(userId storage.UserId, add, del []data.Interval) error {
 	r.modifyCalls++
 	return r.Ephemeral.ModifyIntervals(userId, add, del)
 }

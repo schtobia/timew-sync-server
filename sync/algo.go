@@ -47,10 +47,10 @@ func Sync(syncRequest data.SyncRequest, store storage.Storage) ([]data.Interval,
 	if diffErr != nil {
 		restoreError := store.SetIntervals(storage.UserId(syncRequest.UserID), backup) // try to restore backup
 		if restoreError != nil {
-			return nil, false, fmt.Errorf("fatal error: Failed to apply diff %v. "+
+			return nil, false, fmt.Errorf("fatal error: failed to apply diff %w. "+
 				"Also could not restore server state", diffErr)
 		} else {
-			return nil, false, fmt.Errorf("fatal error: Failed to apply diff %v. "+
+			return nil, false, fmt.Errorf("fatal error: failed to apply diff %w. "+
 				"Stored state unchanged", diffErr)
 		}
 	}
@@ -59,10 +59,10 @@ func Sync(syncRequest data.SyncRequest, store storage.Storage) ([]data.Interval,
 	if solveErr != nil {
 		restoreError := store.SetIntervals(storage.UserId(syncRequest.UserID), backup) // try to restore backup
 		if restoreError != nil {
-			return nil, conflict, fmt.Errorf("fatal error: Failed to solve conflicts %v. "+
+			return nil, conflict, fmt.Errorf("fatal error: failed to solve conflicts %w. "+
 				"Also could not restore server state", solveErr)
 		} else {
-			return nil, conflict, fmt.Errorf("fatal error: Failed to solve conflicts %v. "+
+			return nil, conflict, fmt.Errorf("fatal error: failed to solve conflicts %w. "+
 				"Stored state unchanged", solveErr)
 		}
 	}
@@ -71,10 +71,10 @@ func Sync(syncRequest data.SyncRequest, store storage.Storage) ([]data.Interval,
 	if err2 != nil {
 		restoreError := store.SetIntervals(storage.UserId(syncRequest.UserID), backup) // trying to restore backup
 		if restoreError != nil {
-			return nil, conflict, fmt.Errorf("fatal error: Failed to retrieve intervals from storage. " +
+			return nil, conflict, fmt.Errorf("fatal error: failed to retrieve intervals from storage. " +
 				"Also could not restore server state")
 		} else {
-			return nil, conflict, fmt.Errorf("fatal error: Failed to retrieve intervals from storage. " +
+			return nil, conflict, fmt.Errorf("fatal error: failed to retrieve intervals from storage. " +
 				"Stored state did not change")
 		}
 	}

@@ -54,7 +54,6 @@ func TestAuthenticateWithKeySet_positive(t *testing.T) {
 	if !b {
 		t.Errorf("Failed to authenticate")
 	}
-
 }
 
 func TestAuthenticateWithKeySet_negative(t *testing.T) {
@@ -134,5 +133,4 @@ func TestAuthenticateWithKeySet_IDMismatch(t *testing.T) {
 	if b {
 		t.Errorf("Authenticated with mismatching userIDs")
 	}
-
 }

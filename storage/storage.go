@@ -103,7 +103,7 @@ type Storage interface {
 
 	// ModifyIntervals atomically adds and deletes a specified set
 	// of intervals
-	ModifyIntervals(userId UserId, add []data.Interval, del []data.Interval) error
+	ModifyIntervals(userId UserId, add, del []data.Interval) error
 
 	// AddInterval adds an interval to a user's intervals
 	AddInterval(userId UserId, interval data.Interval) error

@@ -22,7 +22,6 @@ import (
 	"log"
 	"net/http"
 
-	_ "github.com/lestrrat-go/jwx"
 	"github.com/timewarrior-synchronize/timew-sync-server/data"
 	"github.com/timewarrior-synchronize/timew-sync-server/storage"
 )

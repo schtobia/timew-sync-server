@@ -47,8 +47,8 @@ func TestEphemeralStorage(t *testing.T) {
 
 	for _, x := range result {
 		correct := false
-		for i, _ := range intervals {
-			if diff := cmp.Diff(intervals[i], x); diff == "" {
+		for _, expected := range intervals {
+			if diff := cmp.Diff(expected, x); diff == "" {
 				correct = true
 			}
 		}
@@ -62,16 +62,16 @@ func TestEphemeralStorage_ModifyIntervals(t *testing.T) {
 	var s Storage
 	add := []data.Interval{
 		{
-			Start:      time.Date(2020, 01, 01, 12, 0, 0, 0, time.UTC),
-			End:        time.Date(2020, 01, 01, 13, 0, 0, 0, time.UTC),
+			Start:      time.Date(2020, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
+			End:        time.Date(2020, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
 			Tags:       []string{"Tag3", "Tag4"},
 			Annotation: "Annotation2",
 		},
 	}
 	del := []data.Interval{
 		{
-			Start:      time.Date(2021, 01, 01, 12, 0, 0, 0, time.UTC),
-			End:        time.Date(2021, 01, 01, 13, 0, 0, 0, time.UTC),
+			Start:      time.Date(2021, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
+			End:        time.Date(2021, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
 			Tags:       []string{"Tag1", "Tag2"},
 			Annotation: "Annotation",
 		},
@@ -89,8 +89,8 @@ func TestEphemeralStorage_ModifyIntervals(t *testing.T) {
 
 	for _, x := range result {
 		correct := false
-		for i, _ := range add {
-			if diff := cmp.Diff(add[i], x); diff == "" {
+		for _, expected := range add {
+			if diff := cmp.Diff(expected, x); diff == "" {
 				correct = true
 			}
 		}
@@ -105,14 +105,14 @@ func TestEphemeral_ModifyIntervals_add(t *testing.T) {
 
 	add := []data.Interval{
 		{
-			Start:      time.Date(2020, 01, 01, 12, 0, 0, 0, time.UTC),
-			End:        time.Date(2020, 01, 01, 13, 0, 0, 0, time.UTC),
+			Start:      time.Date(2020, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
+			End:        time.Date(2020, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
 			Tags:       []string{"Tag3", "Tag4"},
 			Annotation: "Annotation2",
 		},
 		{
-			Start:      time.Date(2021, 01, 01, 12, 0, 0, 0, time.UTC),
-			End:        time.Date(2021, 01, 01, 13, 0, 0, 0, time.UTC),
+			Start:      time.Date(2021, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
+			End:        time.Date(2021, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
 			Tags:       []string{"Tag1", "Tag2"},
 			Annotation: "Annotation1",
 		},
@@ -129,8 +129,8 @@ func TestEphemeral_ModifyIntervals_add(t *testing.T) {
 
 	for _, x := range result {
 		correct := false
-		for i, _ := range add {
-			if diff := cmp.Diff(add[i], x); diff == "" {
+		for _, expected := range add {
+			if diff := cmp.Diff(expected, x); diff == "" {
 				correct = true
 			}
 		}
@@ -144,8 +144,8 @@ func TestEphemeral_AddInterval(t *testing.T) {
 	var s Storage
 
 	add := data.Interval{
-		Start:      time.Date(2020, 01, 01, 12, 0, 0, 0, time.UTC),
-		End:        time.Date(2020, 01, 01, 13, 0, 0, 0, time.UTC),
+		Start:      time.Date(2020, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
+		End:        time.Date(2020, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
 		Tags:       []string{"Tag3", "Tag4"},
 		Annotation: "Annotation2",
 	}

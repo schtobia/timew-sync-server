@@ -26,16 +26,16 @@ import (
 )
 
 // SolveConflict merges overlapping intervals of given user.
-// It then updates userId's state in store accordingly
+// It then updates userID's state in store accordingly
 // SolveConflict returns true iff a conflict was detected
-func SolveConflict(userId int64, store storage.Storage) (bool, error) {
+func SolveConflict(userID int64, store storage.Storage) (bool, error) {
 	conflictDetected := false
-	intervals, err := store.GetIntervals(storage.UserId(userId))
+	intervals, err := store.GetIntervals(storage.UserId(userID))
 
 	var removed []data.Interval
 	var added []data.Interval
 	if err != nil {
-		return false, fmt.Errorf("getting intervals for user %d: %w", userId, err)
+		return false, fmt.Errorf("getting intervals for user %d: %w", userID, err)
 	}
 
 	// Sort intervals by ascending start time (in place)
@@ -157,14 +157,14 @@ func SolveConflict(userId int64, store storage.Storage) (bool, error) {
 
 	netAdd, netDel := computeNetDiff(added, removed)
 
-	if err := store.ModifyIntervals(storage.UserId(userId), netAdd, netDel); err != nil {
-		return conflictDetected, fmt.Errorf("modifying intervals for user %d: %w", userId, err)
+	if err := store.ModifyIntervals(storage.UserId(userID), netAdd, netDel); err != nil {
+		return conflictDetected, fmt.Errorf("modifying intervals for user %d: %w", userID, err)
 	}
 
 	return conflictDetected, nil
 }
 
-func computeNetDiff(added []data.Interval, removed []data.Interval) ([]data.Interval, []data.Interval) {
+func computeNetDiff(added, removed []data.Interval) ([]data.Interval, []data.Interval) {
 	addedKeys := storage.ConvertToKeys(added)
 	removedKeys := storage.ConvertToKeys(removed)
 
@@ -215,7 +215,7 @@ func filterBySet(intervals []data.Interval, keys []storage.IntervalKey, set map[
 // annotation to tags. Case 4: Iff both intervals have the same annotation, we just use that annotation
 // As tags we return the alphabetically sorted union of both intervals' tags (and both annotations in Case 3)
 // without duplicates.
-func UniteTagsAndAnnotation(a data.Interval, b data.Interval) ([]string, string) {
+func UniteTagsAndAnnotation(a, b data.Interval) ([]string, string) {
 	tags := make([]string, len(a.Tags), len(a.Tags)+len(b.Tags))
 	tmp := make([]string, len(b.Tags))
 	copy(tags, a.Tags)

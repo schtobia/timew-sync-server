@@ -18,7 +18,6 @@ package sync
 
 import (
 	"slices"
-
 	"testing"
 	"time"
 
@@ -143,10 +142,8 @@ func TestSync(t *testing.T) {
 		Added:   added,
 		Removed: removed,
 	}
-	store.Initialize()
-	store.SetIntervals(storage.UserId(0), serverState)
+	mustSetup(t, &store, storage.UserId(0), serverState)
 	result, _, err := Sync(req, &store)
-
 	if err != nil {
 		t.Errorf("Sync failed with error %v", err)
 	}

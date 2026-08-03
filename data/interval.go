@@ -52,12 +52,12 @@ type JSONInterval struct {
 func (json JSONInterval) ToInterval() (Interval, error) {
 	start, err := time.Parse(timeLayout, json.Start)
 	if err != nil {
-		return Interval{}, fmt.Errorf("Error while start time: %v", err)
+		return Interval{}, fmt.Errorf("error while start time: %w", err)
 	}
 
 	end, err := time.Parse(timeLayout, json.End)
 	if err != nil {
-		return Interval{}, fmt.Errorf("Error while end time: %v", err)
+		return Interval{}, fmt.Errorf("error while end time: %w", err)
 	}
 
 	return Interval{
@@ -89,7 +89,6 @@ func FromJSONIntervals(intervals []JSONInterval) ([]Interval, error) {
 
 	for i, x := range intervals {
 		interval, err := x.ToInterval()
-
 		if err != nil {
 			return nil, err
 		}

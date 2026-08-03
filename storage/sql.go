@@ -180,7 +180,7 @@ WHERE user_id = $1 AND start_time = $2 AND end_time = $3 AND tags = $4 AND annot
 // ModifyIntervals atomically adds and deletes a specified set of
 // intervals. Returns an error if an error occurs while modifying the
 // data
-func (s *Sql) ModifyIntervals(userId UserId, add []data.Interval, del []data.Interval) error {
+func (s *Sql) ModifyIntervals(userId UserId, add, del []data.Interval) error {
 	ctx := context.Background()
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {

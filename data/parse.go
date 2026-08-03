@@ -47,17 +47,17 @@ func ParseSyncRequest(jsonInput string) (SyncRequest, error) {
 
 	err := json.Unmarshal([]byte(jsonInput), &requestData)
 	if err != nil {
-		return SyncRequest{}, fmt.Errorf("Error occured during JSON parse: %v", err)
+		return SyncRequest{}, fmt.Errorf("error occurred during JSON parse: %w", err)
 	}
 
 	added, err := FromJSONIntervals(requestData.Added)
 	if err != nil {
-		return SyncRequest{}, fmt.Errorf("Error occured during parsing of added intervals: %v", err)
+		return SyncRequest{}, fmt.Errorf("error occurred during parsing of added intervals: %w", err)
 	}
 
 	removed, err := FromJSONIntervals(requestData.Removed)
 	if err != nil {
-		return SyncRequest{}, fmt.Errorf("Error occured during parsing of removed intervals: %v", err)
+		return SyncRequest{}, fmt.Errorf("error occurred during parsing of removed intervals: %w", err)
 	}
 
 	syncRequest := SyncRequest{

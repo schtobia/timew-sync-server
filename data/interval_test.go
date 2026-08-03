@@ -90,5 +90,4 @@ func TestIntervalsToStrings(t *testing.T) {
 			t.Errorf("wrong conversion for interval %v: expected \"%v\" got \"%v\"\n", i, expected[i], a)
 		}
 	}
-
 }

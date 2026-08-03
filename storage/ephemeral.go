@@ -89,7 +89,7 @@ func (ep *Ephemeral) RemoveInterval(userId UserId, interval data.Interval) error
 
 // ModifyIntervals atomically adds and deletes a specified set
 // of intervals
-func (ep *Ephemeral) ModifyIntervals(userId UserId, add []data.Interval, del []data.Interval) error {
+func (ep *Ephemeral) ModifyIntervals(userId UserId, add, del []data.Interval) error {
 	for _, interval := range del {
 		delete(ep.intervals[userId], IntervalToKey(interval))
 	}

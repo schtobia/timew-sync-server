@@ -73,7 +73,6 @@ func TestParseJSON(t *testing.T) {
 	if diff := cmp.Diff(expected, result); diff != "" {
 		t.Errorf("Result differs from expected: \n%s", diff)
 	}
-
 }
 
 func TestToJSON_noConflict(t *testing.T) {
@@ -96,7 +95,6 @@ func TestToJSON_noConflict(t *testing.T) {
 	if diff := cmp.Diff(expected, result); diff != "" {
 		t.Errorf("Result differs from expected: \n%s", diff)
 	}
-
 }
 
 func TestToJSON_withConflict(t *testing.T) {

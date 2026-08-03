@@ -58,7 +58,8 @@ WHERE user_id == ?
 		WillReturnRows(
 			sqlmock.NewRows(columns).
 				AddRow(time.Time{}, time.Time{}, IntervalToKey(expected[0]).Tags, "").
-				AddRow(time.Time{}, time.Time{}, IntervalToKey(expected[1]).Tags, "Annotation"))
+				AddRow(time.Time{}, time.Time{}, IntervalToKey(expected[1]).Tags, "Annotation"),
+		)
 
 	sql := Sql{DB: db}
 	result, err := sql.GetIntervals(4)
@@ -192,8 +193,8 @@ func TestSql_ModifyIntervals(t *testing.T) {
 
 	add := []data.Interval{
 		{
-			Start:      time.Date(2020, 01, 01, 12, 0, 0, 0, time.UTC),
-			End:        time.Date(2020, 01, 01, 13, 0, 0, 0, time.UTC),
+			Start:      time.Date(2020, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
+			End:        time.Date(2020, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
 			Tags:       []string{"Tag3", "Tag4"},
 			Annotation: "Annotation2",
 		},
@@ -201,8 +202,8 @@ func TestSql_ModifyIntervals(t *testing.T) {
 
 	del := []data.Interval{
 		{
-			Start:      time.Date(2021, 01, 01, 12, 0, 0, 0, time.UTC),
-			End:        time.Date(2021, 01, 01, 13, 0, 0, 0, time.UTC),
+			Start:      time.Date(2021, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
+			End:        time.Date(2021, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
 			Tags:       []string{"Tag1", "Tag2"},
 			Annotation: "Annotation",
 		},
@@ -236,7 +237,6 @@ VALUES \(\$1, \$2, \$3, \$4, \$5\)
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func TestSql_ModifyIntervals_Rollback(t *testing.T) {
@@ -248,8 +248,8 @@ func TestSql_ModifyIntervals_Rollback(t *testing.T) {
 
 	add := []data.Interval{
 		{
-			Start:      time.Date(2020, 01, 01, 12, 0, 0, 0, time.UTC),
-			End:        time.Date(2020, 01, 01, 13, 0, 0, 0, time.UTC),
+			Start:      time.Date(2020, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
+			End:        time.Date(2020, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
 			Tags:       []string{"Tag3", "Tag4"},
 			Annotation: "Annotation2",
 		},
@@ -257,8 +257,8 @@ func TestSql_ModifyIntervals_Rollback(t *testing.T) {
 
 	del := []data.Interval{
 		{
-			Start:      time.Date(2021, 01, 01, 12, 0, 0, 0, time.UTC),
-			End:        time.Date(2021, 01, 01, 13, 0, 0, 0, time.UTC),
+			Start:      time.Date(2021, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
+			End:        time.Date(2021, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
 			Tags:       []string{"Tag1", "Tag2"},
 			Annotation: "Annotation",
 		},
@@ -271,7 +271,7 @@ WHERE user_id = \$1 AND start_time = \$2 AND end_time = \$3 AND tags = \$4 AND a
 `
 	mock.ExpectExec(q).
 		WithArgs(123, del[0].Start, del[0].End, IntervalToKey(del[0]).Tags, del[0].Annotation).
-		WillReturnError(fmt.Errorf("Artificial error"))
+		WillReturnError(fmt.Errorf("artificial error"))
 
 	mock.ExpectRollback()
 
@@ -284,5 +284,4 @@ WHERE user_id = \$1 AND start_time = \$2 AND end_time = \$3 AND tags = \$4 AND a
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
