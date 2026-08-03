@@ -25,9 +25,9 @@ import (
 	"github.com/timewarrior-synchronize/timew-sync-server/data"
 )
 
-// A UserId represents a unique ID assigned to each user of the
-// timewarrior sync server
-type UserId int64
+// A UserID represents a unique ID assigned to each user of the
+// timewarrior sync server.
+type UserID int64
 
 type IntervalKey struct {
 	Start      time.Time
@@ -36,30 +36,33 @@ type IntervalKey struct {
 	Annotation string
 }
 
-// ConvertToKeys converts a slice of data.Interval to a slice of IntervalKey
+// ConvertToKeys converts a slice of data.Interval to a slice of IntervalKey.
 func ConvertToKeys(data []data.Interval) []IntervalKey {
 	result := make([]IntervalKey, len(data))
 	for i, interval := range data {
 		result[i] = IntervalToKey(interval)
 	}
+
 	return result
 }
 
-// ConvertToIntervals converts a slice of IntervalKey to a slice of data.Interval
+// ConvertToIntervals converts a slice of IntervalKey to a slice of data.Interval.
 func ConvertToIntervals(keys []IntervalKey) []data.Interval {
 	result := make([]data.Interval, len(keys))
 	for i, key := range keys {
 		result[i] = KeyToInterval(key)
 	}
+
 	return result
 }
 
-// IntervalToKey converts a data.Interval struct to an IntervalKey struct which can be used as key in maps
+// IntervalToKey converts a data.Interval struct to an IntervalKey struct which can be used as key in maps.
 func IntervalToKey(data data.Interval) IntervalKey {
 	result, err := json.Marshal(data.Tags)
 	if err != nil {
 		log.Printf("Error parsing tag Array %v to json string", data.Tags)
 	}
+
 	return IntervalKey{
 		Start:      data.Start,
 		End:        data.End,
@@ -76,10 +79,12 @@ func KeyToInterval(key IntervalKey) data.Interval {
 		Tags:       nil,
 		Annotation: key.Annotation,
 	}
+
 	err := json.Unmarshal([]byte(key.Tags), &result.Tags)
 	if err != nil {
 		log.Printf("Error parsing Tags json-String %v to slice of string", key.Tags)
 	}
+
 	return result
 }
 
@@ -90,24 +95,24 @@ type Storage interface {
 	Initialize() error
 
 	// Acquire the lock for this user id
-	Lock(userId UserId)
+	Lock(userID UserID)
 
 	// Release the lock for this user id
-	Unlock(userId UserId)
+	Unlock(userID UserID)
 
 	// GetIntervals returns all intervals associated with a user
-	GetIntervals(userId UserId) ([]data.Interval, error)
+	GetIntervals(userID UserID) ([]data.Interval, error)
 
 	// SetIntervals overrides all intervals of a user
-	SetIntervals(userId UserId, intervals []data.Interval) error
+	SetIntervals(userID UserID, intervals []data.Interval) error
 
 	// ModifyIntervals atomically adds and deletes a specified set
 	// of intervals
-	ModifyIntervals(userId UserId, add, del []data.Interval) error
+	ModifyIntervals(userID UserID, add, del []data.Interval) error
 
 	// AddInterval adds an interval to a user's intervals
-	AddInterval(userId UserId, interval data.Interval) error
+	AddInterval(userID UserID, interval data.Interval) error
 
 	// RemoveInterval removes an interval from a user's intervals
-	RemoveInterval(userId UserId, interval data.Interval) error
+	RemoveInterval(userID UserID, interval data.Interval) error
 }

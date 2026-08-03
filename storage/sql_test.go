@@ -17,15 +17,17 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 package storage
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/timewarrior-synchronize/timew-sync-server/data"
-
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/go-cmp/cmp"
+
+	"github.com/timewarrior-synchronize/timew-sync-server/data"
 )
+
+var errArtificial = errors.New("artificial error")
 
 func TestSql_GetIntervals(t *testing.T) {
 	db, mock, err := sqlmock.New()
@@ -61,7 +63,8 @@ WHERE user_id == ?
 				AddRow(time.Time{}, time.Time{}, IntervalToKey(expected[1]).Tags, "Annotation"),
 		)
 
-	sql := Sql{DB: db}
+	sql := SQL{DB: db}
+
 	result, err := sql.GetIntervals(4)
 	if err != nil {
 		t.Errorf("Error '%s' during GetIntervals", err)
@@ -97,6 +100,7 @@ func TestSql_SetIntervals(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
+
 	q := `
 DELETE FROM interval
 WHERE user_id = \$1
@@ -115,7 +119,8 @@ INSERT INTO interval
 
 	mock.ExpectCommit()
 
-	sql := Sql{DB: db}
+	sql := SQL{DB: db}
+
 	err = sql.SetIntervals(42, testData)
 	if err != nil {
 		t.Errorf("Error '%s' during SetIntervals", err)
@@ -148,7 +153,8 @@ VALUES \(\$1, \$2, \$3, \$4, \$5\)
 		WithArgs(3, testData.Start, testData.End, IntervalToKey(testData).Tags, testData.Annotation).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	sql := Sql{DB: db}
+	sql := SQL{DB: db}
+
 	err = sql.AddInterval(3, testData)
 	if err != nil {
 		t.Errorf("Error '%s' during AddInterval", err)
@@ -177,7 +183,8 @@ WHERE user_id = \$1 AND start_time = \$2 AND end_time = \$3 AND tags = \$4 AND a
 		WithArgs(0, testData.Start, testData.End, IntervalToKey(testData).Tags, testData.Annotation).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	sql := Sql{DB: db}
+	sql := SQL{DB: db}
+
 	err = sql.RemoveInterval(0, testData)
 	if err != nil {
 		t.Errorf("Error '%s' during RemoveInterval", err)
@@ -210,6 +217,7 @@ func TestSql_ModifyIntervals(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
+
 	q := `
 DELETE FROM interval
 WHERE user_id = \$1 AND start_time = \$2 AND end_time = \$3 AND tags = \$4 AND annotation = \$5
@@ -228,7 +236,8 @@ VALUES \(\$1, \$2, \$3, \$4, \$5\)
 
 	mock.ExpectCommit()
 
-	sql := Sql{DB: db}
+	sql := SQL{DB: db}
+
 	err = sql.ModifyIntervals(123, add, del)
 	if err != nil {
 		t.Errorf("Error '%s' during SetIntervals", err)
@@ -265,17 +274,19 @@ func TestSql_ModifyIntervals_Rollback(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
+
 	q := `
 DELETE FROM interval
 WHERE user_id = \$1 AND start_time = \$2 AND end_time = \$3 AND tags = \$4 AND annotation = \$5
 `
 	mock.ExpectExec(q).
 		WithArgs(123, del[0].Start, del[0].End, IntervalToKey(del[0]).Tags, del[0].Annotation).
-		WillReturnError(fmt.Errorf("artificial error"))
+		WillReturnError(errArtificial)
 
 	mock.ExpectRollback()
 
-	sql := Sql{DB: db}
+	sql := SQL{DB: db}
+
 	err = sql.ModifyIntervals(123, add, del)
 	if err == nil {
 		t.Errorf("Expected error, but got none")

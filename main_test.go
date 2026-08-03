@@ -34,11 +34,14 @@ func captureStderr(t *testing.T, fn func()) string {
 	if err != nil {
 		t.Fatalf("os.Pipe: %v", err)
 	}
+
 	oldStderr := os.Stderr
 	os.Stderr = w
+
 	defer func() { os.Stderr = oldStderr }()
 
 	fn()
+
 	if err := w.Close(); err != nil {
 		t.Fatalf("close pipe: %v", err)
 	}
@@ -47,6 +50,7 @@ func captureStderr(t *testing.T, fn func()) string {
 	if _, err := io.Copy(&buf, r); err != nil {
 		t.Fatalf("copy pipe: %v", err)
 	}
+
 	return buf.String()
 }
 
@@ -112,6 +116,7 @@ func TestRunAddKey_UnknownUser(t *testing.T) {
 	// Use a fresh temp dir as keys-location so the user id definitely
 	// does not exist there.
 	tmp := t.TempDir()
+
 	out := captureStderr(t, func() {
 		if code := runAddKey([]string{"--path", "/dev/null", "--id", "9999", "--keys-location", tmp}); code != 1 {
 			t.Errorf("expected exit code 1, got %d", code)

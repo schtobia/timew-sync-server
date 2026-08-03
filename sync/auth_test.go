@@ -18,6 +18,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 package sync
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"net/http"
@@ -39,17 +40,26 @@ func TestAuthenticateWithKeySet_positive(t *testing.T) {
 	keySet := jwk.NewSet()
 	keySet.Add(pub1)
 	keySet.Add(pub2)
+
 	token := jwt.New()
-	token.Set("userID", 42)
-	token.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
+	if err := token.Set("userID", 42); err != nil {
+		t.Fatalf("token.Set userID: %v", err)
+	}
+
+	if err := token.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("token.Set expiration: %v", err)
+	}
+
 	payload, err7 := jwt.Sign(token, jwa.RS256, key2)
 	bearer := "Bearer " + string(payload)
-	req, err8 := http.NewRequest("POST", "", nil)
+	req, err8 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
 	req.Header.Add("Authorization", bearer)
+
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil || err6 != nil || err7 != nil ||
 		err8 != nil {
 		t.Errorf("Failed to generate key set in preparation for testing")
 	}
+
 	b := AuthenticateWithKeySet(req, 42, keySet)
 	if !b {
 		t.Errorf("Failed to authenticate")
@@ -64,17 +74,26 @@ func TestAuthenticateWithKeySet_negative(t *testing.T) {
 	pub1, err5 := jwk.PublicKeyOf(key1)
 	keySet := jwk.NewSet()
 	keySet.Add(pub1)
+
 	token := jwt.New()
-	token.Set("userID", 42)
-	token.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
+	if err := token.Set("userID", 42); err != nil {
+		t.Fatalf("token.Set userID: %v", err)
+	}
+
+	if err := token.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("token.Set expiration: %v", err)
+	}
+
 	payload, err7 := jwt.Sign(token, jwa.RS256, key2)
 	bearer := "Bearer " + string(payload)
-	req, err8 := http.NewRequest("POST", "", nil)
+	req, err8 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
 	req.Header.Add("Authorization", bearer)
+
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil || err7 != nil ||
 		err8 != nil {
 		t.Errorf("Failed to generate key set in preparation for testing")
 	}
+
 	b := AuthenticateWithKeySet(req, 42, keySet)
 	if b {
 		t.Errorf("Authenticated falsely")
@@ -91,17 +110,26 @@ func TestAuthenticateWithKeySet_expired(t *testing.T) {
 	keySet := jwk.NewSet()
 	keySet.Add(pub1)
 	keySet.Add(pub2)
+
 	token := jwt.New()
-	token.Set("userID", 42)
-	token.Set(jwt.ExpirationKey, time.Now().Add(-time.Hour))
+	if err := token.Set("userID", 42); err != nil {
+		t.Fatalf("token.Set userID: %v", err)
+	}
+
+	if err := token.Set(jwt.ExpirationKey, time.Now().Add(-time.Hour)); err != nil {
+		t.Fatalf("token.Set expiration: %v", err)
+	}
+
 	payload, err7 := jwt.Sign(token, jwa.RS256, key2)
 	bearer := "Bearer " + string(payload)
-	req, err8 := http.NewRequest("POST", "", nil)
+	req, err8 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
 	req.Header.Add("Authorization", bearer)
+
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil || err6 != nil || err7 != nil ||
 		err8 != nil {
 		t.Errorf("Failed to generate key set in preparation for testing")
 	}
+
 	b := AuthenticateWithKeySet(req, 42, keySet)
 	if b {
 		t.Errorf("Authenticated with expired jwt")
@@ -118,17 +146,26 @@ func TestAuthenticateWithKeySet_IDMismatch(t *testing.T) {
 	keySet := jwk.NewSet()
 	keySet.Add(pub1)
 	keySet.Add(pub2)
+
 	token := jwt.New()
-	token.Set("userID", 42)
-	token.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
+	if err := token.Set("userID", 42); err != nil {
+		t.Fatalf("token.Set userID: %v", err)
+	}
+
+	if err := token.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("token.Set expiration: %v", err)
+	}
+
 	payload, err7 := jwt.Sign(token, jwa.RS256, key2)
 	bearer := "Bearer " + string(payload)
-	req, err8 := http.NewRequest("POST", "", nil)
+	req, err8 := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
 	req.Header.Add("Authorization", bearer)
+
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil || err6 != nil || err7 != nil ||
 		err8 != nil {
 		t.Errorf("Failed to generate key set in preparation for testing")
 	}
+
 	b := AuthenticateWithKeySet(req, 0, keySet)
 	if b {
 		t.Errorf("Authenticated with mismatching userIDs")

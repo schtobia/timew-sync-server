@@ -20,25 +20,28 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"log"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+
 	"github.com/timewarrior-synchronize/timew-sync-server/data"
 )
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-type Sql struct {
+type SQL struct {
 	LockerRoom
+
 	DB *sql.DB
 }
 
-// Initialize runs all necessary setup for this Storage instance
-func (s *Sql) Initialize() error {
+// Initialize runs all necessary setup for this Storage instance.
+func (s *SQL) Initialize() error {
 	s.InitializeLockerRoom()
 
 	d, err := iofs.New(migrationsFS, "migrations")
@@ -46,7 +49,8 @@ func (s *Sql) Initialize() error {
 		return fmt.Errorf("sql_storage: loading database migrations: %w", err)
 	}
 
-	instance, err := sqlite3.WithInstance(s.DB, &sqlite3.Config{})
+	instance, err := sqlite3.WithInstance(s.DB, &sqlite3.Config{}) //nolint:exhaustruct
+	// optional fields are intentionally omitted
 	if err != nil {
 		return fmt.Errorf("sql_storage: connecting to database for migrations: %w", err)
 	}
@@ -58,7 +62,7 @@ func (s *Sql) Initialize() error {
 
 	err = m.Up()
 	if err != nil {
-		if err != migrate.ErrNoChange {
+		if !errors.Is(err, migrate.ErrNoChange) {
 			return fmt.Errorf("sql_storage: running database migrations: %w", err)
 		}
 	}
@@ -66,9 +70,9 @@ func (s *Sql) Initialize() error {
 	return nil
 }
 
-// GetIntervals returns all intervals stored for a user
-// Returns an error, if there are problems while reading the data
-func (s *Sql) GetIntervals(userId UserId) ([]data.Interval, error) {
+// GetIntervals returns all intervals stored for a user.
+// Returns an error, if there are problems while reading the data.
+func (s *SQL) GetIntervals(userID UserID) ([]data.Interval, error) {
 	var intervals []IntervalKey
 
 	q := `
@@ -76,14 +80,16 @@ SELECT start_time, end_time, tags, annotation
 FROM interval
 WHERE user_id == $1
 `
-	rows, err := s.DB.Query(q, userId)
+
+	rows, err := s.DB.QueryContext(context.Background(), q, userID)
 	if err != nil {
 		return nil, fmt.Errorf("sql_storage: Error during SQL Query: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		interval := IntervalKey{}
+		interval := IntervalKey{} //nolint:exhaustruct // fields are populated by rows.Scan
+
 		err = rows.Scan(&interval.Start, &interval.End, &interval.Tags, &interval.Annotation)
 		if err != nil {
 			return nil, fmt.Errorf("sql_storage: Error while reading database row: %w", err)
@@ -99,10 +105,11 @@ WHERE user_id == $1
 	return ConvertToIntervals(intervals), nil
 }
 
-// SetIntervals replaces all intervals stored for a user
-// Returns an error if an error occurs while replacing the data
-func (s *Sql) SetIntervals(userId UserId, intervals []data.Interval) error {
+// SetIntervals replaces all intervals stored for a user.
+// Returns an error if an error occurs while replacing the data.
+func (s *SQL) SetIntervals(userID UserID, intervals []data.Interval) error {
 	ctx := context.Background()
+
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("sql_storage: Error while starting transaction: %w", err)
@@ -112,12 +119,15 @@ func (s *Sql) SetIntervals(userId UserId, intervals []data.Interval) error {
 DELETE FROM interval
 WHERE user_id = $1
 `
-	_, err = tx.ExecContext(ctx, q, userId)
+
+	_, err = tx.ExecContext(ctx, q, userID)
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
 			log.Printf("sql_storage: Unable to rollback: %v", rollbackErr)
+
 			return err
 		}
+
 		return err
 	}
 
@@ -125,14 +135,18 @@ WHERE user_id = $1
 INSERT INTO interval (user_id, start_time, end_time, tags, annotation)
 VALUES ($1, $2, $3, $4, $5)
 `
+
 	keys := ConvertToKeys(intervals)
+
 	for _, key := range keys {
-		_, err = tx.ExecContext(ctx, q, userId, key.Start, key.End, key.Tags, key.Annotation)
+		_, err = tx.ExecContext(ctx, q, userID, key.Start, key.End, key.Tags, key.Annotation)
 		if err != nil {
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				log.Printf("sql_storage: Unable to rollback: %v", rollbackErr)
+
 				return err
 			}
+
 			return err
 		}
 	}
@@ -145,15 +159,16 @@ VALUES ($1, $2, $3, $4, $5)
 	return nil
 }
 
-// AddInterval adds a single interval to the intervals stored for a user
-// Returns an error if an error occurs while adding the interval
-func (s *Sql) AddInterval(userId UserId, interval data.Interval) error {
+// AddInterval adds a single interval to the intervals stored for a user.
+// Returns an error if an error occurs while adding the interval.
+func (s *SQL) AddInterval(userID UserID, interval data.Interval) error {
 	q := `
 INSERT OR IGNORE INTO interval (user_id, start_time, end_time, tags, annotation)
 VALUES ($1, $2, $3, $4, $5)
 `
 	key := IntervalToKey(interval)
-	_, err := s.DB.Exec(q, userId, key.Start, key.End, key.Tags, key.Annotation)
+
+	_, err := s.DB.ExecContext(context.Background(), q, userID, key.Start, key.End, key.Tags, key.Annotation)
 	if err != nil {
 		return fmt.Errorf("sql_storage: Error while adding interval: %w", err)
 	}
@@ -161,15 +176,16 @@ VALUES ($1, $2, $3, $4, $5)
 	return nil
 }
 
-// RemoveInterval removes a single interval from the intervals stored for a user
-// Returns an error if an error occurs while deleting the interval
-func (s *Sql) RemoveInterval(userId UserId, interval data.Interval) error {
+// RemoveInterval removes a single interval from the intervals stored for a user.
+// Returns an error if an error occurs while deleting the interval.
+func (s *SQL) RemoveInterval(userID UserID, interval data.Interval) error {
 	q := `
 DELETE FROM interval
 WHERE user_id = $1 AND start_time = $2 AND end_time = $3 AND tags = $4 AND annotation = $5
 `
 	key := IntervalToKey(interval)
-	_, err := s.DB.Exec(q, userId, key.Start, key.End, key.Tags, key.Annotation)
+
+	_, err := s.DB.ExecContext(context.Background(), q, userID, key.Start, key.End, key.Tags, key.Annotation)
 	if err != nil {
 		return fmt.Errorf("sql_storage: Error while removing interval: %w", err)
 	}
@@ -179,9 +195,10 @@ WHERE user_id = $1 AND start_time = $2 AND end_time = $3 AND tags = $4 AND annot
 
 // ModifyIntervals atomically adds and deletes a specified set of
 // intervals. Returns an error if an error occurs while modifying the
-// data
-func (s *Sql) ModifyIntervals(userId UserId, add, del []data.Interval) error {
+// data.
+func (s *SQL) ModifyIntervals(userID UserID, add, del []data.Interval) error {
 	ctx := context.Background()
+
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("sql_storage: Error while starting transaction: %w", err)
@@ -192,14 +209,17 @@ func (s *Sql) ModifyIntervals(userId UserId, add, del []data.Interval) error {
 DELETE FROM interval
 WHERE user_id = $1 AND start_time = $2 AND end_time = $3 AND tags = $4 AND annotation = $5
 `
+
 	keysToDelete := ConvertToKeys(del)
 	for _, key := range keysToDelete {
-		_, err = tx.ExecContext(ctx, q, userId, key.Start, key.End, key.Tags, key.Annotation)
+		_, err = tx.ExecContext(ctx, q, userID, key.Start, key.End, key.Tags, key.Annotation)
 		if err != nil {
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				log.Printf("sql_storage: Unable to rollback: %v", rollbackErr)
+
 				return err
 			}
+
 			return err
 		}
 	}
@@ -209,14 +229,18 @@ WHERE user_id = $1 AND start_time = $2 AND end_time = $3 AND tags = $4 AND annot
 INSERT OR IGNORE INTO interval (user_id, start_time, end_time, tags, annotation)
 VALUES ($1, $2, $3, $4, $5)
 `
+
 	keysToAdd := ConvertToKeys(add)
+
 	for _, key := range keysToAdd {
-		_, err = tx.ExecContext(ctx, q, userId, key.Start, key.End, key.Tags, key.Annotation)
+		_, err = tx.ExecContext(ctx, q, userID, key.Start, key.End, key.Tags, key.Annotation)
 		if err != nil {
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				log.Printf("sql_storage: Unable to rollback: %v", rollbackErr)
+
 				return err
 			}
+
 			return err
 		}
 	}

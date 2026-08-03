@@ -29,25 +29,27 @@ import (
 // Data is not stored persistently.
 type Ephemeral struct {
 	LockerRoom
-	intervals map[UserId]intervalSet
+
+	intervals map[UserID]intervalSet
 }
 
-// intervalSet represents a set of intervals
+// intervalSet represents a set of intervals.
 type intervalSet map[IntervalKey]bool
 
-// Initialize runs all necessary setup for this Storage instance
+// Initialize runs all necessary setup for this Storage instance.
 func (ep *Ephemeral) Initialize() error {
-	ep.intervals = make(map[UserId]intervalSet)
+	ep.intervals = make(map[UserID]intervalSet)
 	ep.InitializeLockerRoom()
+
 	return nil
 }
 
-// GetIntervals returns all intervals stored for a specific user
-func (ep *Ephemeral) GetIntervals(userId UserId) ([]data.Interval, error) {
-	intervals := make([]IntervalKey, len(ep.intervals[userId]))
+// GetIntervals returns all intervals stored for a specific user.
+func (ep *Ephemeral) GetIntervals(userID UserID) ([]data.Interval, error) {
+	intervals := make([]IntervalKey, len(ep.intervals[userID]))
 
 	i := 0
-	for interval := range ep.intervals[userId] {
+	for interval := range ep.intervals[userID] {
 		intervals[i] = interval
 		i++
 	}
@@ -55,53 +57,56 @@ func (ep *Ephemeral) GetIntervals(userId UserId) ([]data.Interval, error) {
 	return ConvertToIntervals(intervals), nil
 }
 
-// SetIntervals replaces all intervals of a specific user
-func (ep *Ephemeral) SetIntervals(userId UserId, intervals []data.Interval) error {
+// SetIntervals replaces all intervals of a specific user.
+func (ep *Ephemeral) SetIntervals(userID UserID, intervals []data.Interval) error {
 	keys := ConvertToKeys(intervals)
-	ep.intervals[userId] = make(intervalSet, len(keys))
+	ep.intervals[userID] = make(intervalSet, len(keys))
+
 	for _, key := range keys {
-		ep.intervals[userId][key] = true
+		ep.intervals[userID][key] = true
 	}
-	log.Printf("ephemeral: Set Intervals of User %v\n", userId)
+
+	log.Printf("ephemeral: Set Intervals of User %v\n", userID)
 
 	return nil
 }
 
-// AddInterval adds a single interval to the intervals stored for a user
-func (ep *Ephemeral) AddInterval(userId UserId, interval data.Interval) error {
-	if ep.intervals[userId] == nil {
-		ep.intervals[userId] = make(intervalSet)
+// AddInterval adds a single interval to the intervals stored for a user.
+func (ep *Ephemeral) AddInterval(userID UserID, interval data.Interval) error {
+	if ep.intervals[userID] == nil {
+		ep.intervals[userID] = make(intervalSet)
 	}
 
-	ep.intervals[userId][IntervalToKey(interval)] = true
-	log.Printf("ephemeral: Added an Interval to User %v\n", userId)
+	ep.intervals[userID][IntervalToKey(interval)] = true
+	log.Printf("ephemeral: Added an Interval to User %v\n", userID)
 
 	return nil
 }
 
-// RemoveInterval removes an interval from the intervals stored for a user
-func (ep *Ephemeral) RemoveInterval(userId UserId, interval data.Interval) error {
-	delete(ep.intervals[userId], IntervalToKey(interval))
-	log.Printf("ephemeral: Removed an Interval of User %v\n", userId)
+// RemoveInterval removes an interval from the intervals stored for a user.
+func (ep *Ephemeral) RemoveInterval(userID UserID, interval data.Interval) error {
+	delete(ep.intervals[userID], IntervalToKey(interval))
+	log.Printf("ephemeral: Removed an Interval of User %v\n", userID)
 
 	return nil
 }
 
 // ModifyIntervals atomically adds and deletes a specified set
-// of intervals
-func (ep *Ephemeral) ModifyIntervals(userId UserId, add, del []data.Interval) error {
+// of intervals.
+func (ep *Ephemeral) ModifyIntervals(userID UserID, add, del []data.Interval) error {
 	for _, interval := range del {
-		delete(ep.intervals[userId], IntervalToKey(interval))
+		delete(ep.intervals[userID], IntervalToKey(interval))
 	}
 
-	if ep.intervals[userId] == nil {
-		ep.intervals[userId] = make(intervalSet, len(add))
+	if ep.intervals[userID] == nil {
+		ep.intervals[userID] = make(intervalSet, len(add))
 	}
+
 	for _, interval := range add {
-		ep.intervals[userId][IntervalToKey(interval)] = true
+		ep.intervals[userID][IntervalToKey(interval)] = true
 	}
 
-	log.Printf("ephemeral: Modified Intervals of User %v\n", userId)
+	log.Printf("ephemeral: Modified Intervals of User %v\n", userID)
 
 	return nil
 }

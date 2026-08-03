@@ -22,16 +22,20 @@ import (
 )
 
 // An ErrorResponseBody represents a JSON message that is sent to the
-// client when an error occurs
+// client when an error occurs.
 type ErrorResponseBody struct {
 	Message string `json:"message"`
 	Details string `json:"details"`
 }
 
-// Returns a string representation of this error reponse which will be
-// sent to the client
+// ToString returns a string representation of this error response which will be
+// sent to the client.
 func (e ErrorResponseBody) ToString() string {
 	// Assume that JSON marshalling always is successful
-	result, _ := json.Marshal(e)
+	result, err := json.Marshal(e)
+	if err != nil {
+		return "{}"
+	}
+
 	return string(result)
 }

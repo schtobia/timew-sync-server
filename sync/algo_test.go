@@ -27,6 +27,7 @@ import (
 
 func contains(slice []data.Interval, interval data.Interval) bool {
 	keySlice := storage.ConvertToKeys(slice)
+
 	return slices.Contains(keySlice, storage.IntervalToKey(interval))
 }
 
@@ -142,7 +143,9 @@ func TestSync(t *testing.T) {
 		Added:   added,
 		Removed: removed,
 	}
-	mustSetup(t, &store, storage.UserId(0), serverState)
+
+	mustSetup(t, &store, serverState)
+
 	result, _, err := Sync(req, &store)
 	if err != nil {
 		t.Errorf("Sync failed with error %v", err)
@@ -151,6 +154,7 @@ func TestSync(t *testing.T) {
 	if len(result) != len(expected) {
 		t.Errorf("Sync result wrong. Expected %v got %v", expected, result)
 	}
+
 	for _, interval := range expected {
 		if !contains(result, interval) {
 			t.Errorf("Sync result does not contain interval %v", interval)

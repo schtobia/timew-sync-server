@@ -85,7 +85,8 @@ func TestToJSON_noConflict(t *testing.T) {
 		},
 	}
 
-	expected := `{"conflictsOccurred":false,"intervals":[{"start":"20200401T120000Z","end":"20200401T153000Z","tags":["prank","laugh"],"annotation":"Sample Annotation"}]}`
+	expected := `{"conflictsOccurred":false,"intervals":[{"start":"20200401T120000Z",` +
+		`"end":"20200401T153000Z","tags":["prank","laugh"],"annotation":"Sample Annotation"}]}`
 
 	result, err := ToJSON(testInput, false)
 	if err != nil {

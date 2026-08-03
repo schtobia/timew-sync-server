@@ -46,12 +46,15 @@ func TestIntervalToKey(t *testing.T) {
 	if !result.Start.Equal(expected.Start) {
 		t.Errorf("Expected Start time to be %v got %v", expected.Start, result.Start)
 	}
+
 	if !result.End.Equal(expected.End) {
 		t.Errorf("Expected End time to be %v got %v", expected.End, result.End)
 	}
+
 	if result.Annotation != expected.Annotation {
 		t.Errorf("Expected Annotation to be %v got %v", expected.Annotation, result.Annotation)
 	}
+
 	if result.Tags != expected.Tags {
 		t.Errorf("Expected Tags tp be %v got %v", expected.Tags, result.Tags)
 	}
@@ -73,16 +76,20 @@ func TestKeyToInterval(t *testing.T) {
 		Tags:       []string{"prank", "laugh"},
 		Annotation: annotation,
 	}
+
 	result := KeyToInterval(testInput)
 	if !result.Start.Equal(expected.Start) {
 		t.Errorf("Expected Start time to be %v got %v", expected.Start, result.Start)
 	}
+
 	if !result.End.Equal(expected.End) {
 		t.Errorf("Expected End time to be %v got %v", expected.End, result.End)
 	}
+
 	if result.Annotation != expected.Annotation {
 		t.Errorf("Expected Annotation to be %v got %v", expected.Annotation, result.Annotation)
 	}
+
 	if !reflect.DeepEqual(result, expected) {
 		t.Errorf("Expected Tags tp be %v got %v", expected.Tags, result.Tags)
 	}
@@ -91,13 +98,13 @@ func TestKeyToInterval(t *testing.T) {
 func TestConvertToIntervals(t *testing.T) {
 	// test empty slice
 	if !reflect.DeepEqual(ConvertToIntervals([]IntervalKey{}), []data.Interval{}) {
-		t.Errorf("Empty slice does not map to emtpy slice")
+		t.Errorf("Empty slice does not map to empty slice")
 	}
 }
 
 func TestConvertToKeys(t *testing.T) {
 	// test empty slice
 	if !reflect.DeepEqual(ConvertToKeys([]data.Interval{}), []IntervalKey{}) {
-		t.Errorf("Empty slice does not map to emtpy slice")
+		t.Errorf("Empty slice does not map to empty slice")
 	}
 }

@@ -20,35 +20,35 @@ import (
 	"sync"
 )
 
-// A LockerRoom is a collection of Mutexes mapped to user ids
+// A LockerRoom is a collection of Mutexes mapped to user ids.
 type LockerRoom struct {
 	globalLock sync.Mutex
-	locks      map[UserId]*sync.Mutex
+	locks      map[UserID]*sync.Mutex
 }
 
-// Sets up this LockerRoom instance
+// InitializeLockerRoom sets up this LockerRoom instance.
 func (lr *LockerRoom) InitializeLockerRoom() {
-	lr.locks = make(map[UserId]*sync.Mutex)
+	lr.locks = make(map[UserID]*sync.Mutex)
 }
 
-// Creates an entry into the locks map if the user does not exist yet
-func (lr *LockerRoom) createUserIfNotExists(userId UserId) {
+// Lock acquires the lock for this user id.
+func (lr *LockerRoom) Lock(userID UserID) {
+	lr.createUserIfNotExists(userID)
+
+	lr.locks[userID].Lock()
+}
+
+// Unlock releases the lock for this user id.
+func (lr *LockerRoom) Unlock(userID UserID) {
+	lr.locks[userID].Unlock()
+}
+
+// createUserIfNotExists creates an entry into the locks map if the user does not exist yet.
+func (lr *LockerRoom) createUserIfNotExists(userID UserID) {
 	lr.globalLock.Lock()
 	defer lr.globalLock.Unlock()
 
-	if lr.locks[userId] == nil {
-		lr.locks[userId] = &sync.Mutex{}
+	if lr.locks[userID] == nil {
+		lr.locks[userID] = &sync.Mutex{}
 	}
-}
-
-// Acquire the lock for this user id
-func (lr *LockerRoom) Lock(userId UserId) {
-	lr.createUserIfNotExists(userId)
-
-	lr.locks[userId].Lock()
-}
-
-// Release the lock for this user id
-func (lr *LockerRoom) Unlock(userId UserId) {
-	lr.locks[userId].Unlock()
 }

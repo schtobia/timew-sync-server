@@ -17,7 +17,6 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 package sync
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -27,12 +26,14 @@ import (
 )
 
 // mustSetup initializes store and sets intervals for uid, failing t on any error.
-func mustSetup(t *testing.T, store storage.Storage, uid storage.UserId, intervals []data.Interval) {
+func mustSetup(t *testing.T, store storage.Storage, intervals []data.Interval) {
 	t.Helper()
+
 	if err := store.Initialize(); err != nil {
 		t.Fatalf("store.Initialize: %v", err)
 	}
-	if err := store.SetIntervals(uid, intervals); err != nil {
+
+	if err := store.SetIntervals(storage.UserID(0), intervals); err != nil {
 		t.Fatalf("store.SetIntervals: %v", err)
 	}
 }
@@ -40,32 +41,41 @@ func mustSetup(t *testing.T, store storage.Storage, uid storage.UserId, interval
 func elementwiseEqual(aSlice, bSlice []data.Interval) bool {
 	keyA := storage.ConvertToKeys(aSlice)
 	keyB := storage.ConvertToKeys(bSlice)
+
 	if len(keyA) != len(keyB) {
 		return false
 	}
+
 	for _, a := range keyA {
 		match := false
 		for i, b := range keyB {
 			if a == b {
 				match = true
+
 				keyB = append(keyB[:i], keyB[i+1:]...)
+
 				break
 			}
 		}
+
 		if !match {
 			return false
 		}
 	}
+
 	return true
 }
 
-func sliceString(s []data.Interval) {
-	print("[\n")
+func sliceString(t *testing.T, s []data.Interval) {
+	t.Helper()
+	t.Log("[")
+
 	for _, i := range s {
-		fmt.Printf("\n-------------------------------------\nStart = %v\nEnd = %v\nTags = %v\nAnnotation = %v",
+		t.Logf("\n-------------------------------------\nStart = %v\nEnd = %v\nTags = %v\nAnnotation = %v",
 			i.Start, i.End, i.Tags, i.Annotation)
 	}
-	fmt.Printf("\n]\n\n\n")
+
+	t.Log("]")
 }
 
 func TestSolveConflict_MultiConflict(t *testing.T) {
@@ -147,18 +157,23 @@ func TestSolveConflict_MultiConflict(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	mustSetup(t, &store, storage.UserId(0), serverStateMultiConflict)
+
+	mustSetup(t, &store, serverStateMultiConflict)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
 		t.Errorf("MultiConflict: Solve failed with error %v", err)
 	}
+
 	if !conflict {
 		t.Errorf("MultiConflict: Solve did not detected a conflict")
 	}
-	result, _ := store.GetIntervals(storage.UserId(0))
-	sliceString(multiConflictExpected)
-	sliceString(result)
+
+	result, _ := store.GetIntervals(storage.UserID(0))
+
+	sliceString(t, multiConflictExpected)
+	sliceString(t, result)
+
 	if !elementwiseEqual(multiConflictExpected, result) {
 		t.Errorf("MultiConflict: State after solve wrong. Expected %v got %v", multiConflictExpected, result)
 	}
@@ -225,16 +240,19 @@ func TestSolveConflict_InnerInterval(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	mustSetup(t, &store, storage.UserId(0), serverInnerInterval)
+
+	mustSetup(t, &store, serverInnerInterval)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
 		t.Errorf("InnerInterval: Solve failed with error %v", err)
 	}
+
 	if !conflict {
 		t.Errorf("InnerInterval: Solve did not detected a conflict")
 	}
-	result, _ := store.GetIntervals(storage.UserId(0))
+
+	result, _ := store.GetIntervals(storage.UserID(0))
 	if !elementwiseEqual(innerIntervalExpected, result) {
 		t.Errorf("InnerInterval: State after solve wrong. Expected %v got %v", innerIntervalExpected, result)
 	}
@@ -295,16 +313,19 @@ func TestSolveConflict_SameEnd(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	mustSetup(t, &store, storage.UserId(0), serverStateSameEnd)
+
+	mustSetup(t, &store, serverStateSameEnd)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
 		t.Errorf("SameEnd: Solve failed with error %v", err)
 	}
+
 	if !conflict {
 		t.Errorf("SameEnd: Solve did not detected a conflict")
 	}
-	result, _ := store.GetIntervals(storage.UserId(0))
+
+	result, _ := store.GetIntervals(storage.UserID(0))
 	if !elementwiseEqual(sameEndExpected, result) {
 		t.Errorf("SameEnd: State after solve wrong. Expected %v got %v", sameEndExpected, result)
 	}
@@ -365,16 +386,19 @@ func TestSolveConflict_SameStart(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	mustSetup(t, &store, storage.UserId(0), serverStateSameStart)
+
+	mustSetup(t, &store, serverStateSameStart)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
 		t.Errorf("SameStart: Solve failed with error %v", err)
 	}
+
 	if !conflict {
 		t.Errorf("SameStart: Solve did not detected a conflict")
 	}
-	result, _ := store.GetIntervals(storage.UserId(0))
+
+	result, _ := store.GetIntervals(storage.UserID(0))
 	if !elementwiseEqual(sameStartExpected, result) {
 		t.Errorf("SameStart: State after solve wrong. Expected %v got %v", sameStartExpected, result)
 	}
@@ -429,16 +453,19 @@ func TestSolveConflict_Congruent(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	mustSetup(t, &store, storage.UserId(0), serverStateCongruent)
+
+	mustSetup(t, &store, serverStateCongruent)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
 		t.Errorf("Congruent: Solve failed with error %v", err)
 	}
+
 	if !conflict {
 		t.Errorf("Congruent: Solve did not detected a conflict")
 	}
-	result, _ := store.GetIntervals(storage.UserId(0))
+
+	result, _ := store.GetIntervals(storage.UserID(0))
 	if !elementwiseEqual(congruentExpected, result) {
 		t.Errorf("Congruent: State after solve wrong. Expected %v got %v", congruentExpected, result)
 	}
@@ -505,16 +532,19 @@ func TestSolveConflict_Overlap(t *testing.T) {
 			Annotation: "all normal here",
 		},
 	}
-	mustSetup(t, &store, storage.UserId(0), serverStateOverlap)
+
+	mustSetup(t, &store, serverStateOverlap)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
 		t.Errorf("Overlap: Solve failed with error %v", err)
 	}
+
 	if !conflict {
 		t.Errorf("Overlap: Solve did not detected a conflict")
 	}
-	result, _ := store.GetIntervals(storage.UserId(0))
+
+	result, _ := store.GetIntervals(storage.UserID(0))
 	if !elementwiseEqual(overlapExpected, result) {
 		t.Errorf("Overlap: State after solve wrong. Expected %v got %v", overlapExpected, result)
 	}
@@ -536,16 +566,18 @@ func TestSolveConflict_NoConflicts(t *testing.T) {
 			Annotation: "b",
 		},
 	}
-	mustSetup(t, &store, storage.UserId(0), serverStateNoConflicts)
+	mustSetup(t, &store, serverStateNoConflicts)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
 		t.Errorf("NoConflicts: Solve failed with error %v", err)
 	}
+
 	if conflict {
 		t.Errorf("NoConflicts: Solve falsely detected a conflict")
 	}
-	result, _ := store.GetIntervals(storage.UserId(0))
+
+	result, _ := store.GetIntervals(storage.UserID(0))
 	if !elementwiseEqual(serverStateNoConflicts, result) {
 		t.Errorf("NoConflicts: State after solve wrong. Expected %v got %v", serverStateNoConflicts, result)
 	}
@@ -555,16 +587,18 @@ func TestSolveConflict_NoIntervals(t *testing.T) {
 	store := storage.Ephemeral{}
 	serverStateNoIntervals := []data.Interval{}
 
-	mustSetup(t, &store, storage.UserId(0), serverStateNoIntervals)
+	mustSetup(t, &store, serverStateNoIntervals)
 
 	conflict, err := SolveConflict(0, &store)
 	if err != nil {
 		t.Errorf("NoIntervals: Solve failed with error %v", err)
 	}
+
 	if conflict {
 		t.Errorf("NoIntervals: Solve falsely detected a conflict")
 	}
-	result, _ := store.GetIntervals(storage.UserId(0))
+
+	result, _ := store.GetIntervals(storage.UserID(0))
 	if !elementwiseEqual(serverStateNoIntervals, result) {
 		t.Errorf("NoIntervals: State after solve wrong. Expected %v got %v", serverStateNoIntervals, result)
 	}
@@ -572,24 +606,28 @@ func TestSolveConflict_NoIntervals(t *testing.T) {
 
 type recordingStorage struct {
 	storage.Ephemeral
+
 	addCalls    int
 	removeCalls int
 	modifyCalls int
 }
 
-func (r *recordingStorage) AddInterval(userId storage.UserId, interval data.Interval) error {
+func (r *recordingStorage) AddInterval(userID storage.UserID, interval data.Interval) error {
 	r.addCalls++
-	return r.Ephemeral.AddInterval(userId, interval)
+
+	return r.Ephemeral.AddInterval(userID, interval)
 }
 
-func (r *recordingStorage) RemoveInterval(userId storage.UserId, interval data.Interval) error {
+func (r *recordingStorage) RemoveInterval(userID storage.UserID, interval data.Interval) error {
 	r.removeCalls++
-	return r.Ephemeral.RemoveInterval(userId, interval)
+
+	return r.Ephemeral.RemoveInterval(userID, interval)
 }
 
-func (r *recordingStorage) ModifyIntervals(userId storage.UserId, add, del []data.Interval) error {
+func (r *recordingStorage) ModifyIntervals(userID storage.UserID, add, del []data.Interval) error {
 	r.modifyCalls++
-	return r.Ephemeral.ModifyIntervals(userId, add, del)
+
+	return r.Ephemeral.ModifyIntervals(userID, add, del)
 }
 
 func TestSolveConflict_UsesModifyIntervals(t *testing.T) {
@@ -612,7 +650,7 @@ func TestSolveConflict_UsesModifyIntervals(t *testing.T) {
 			Annotation: "y",
 		},
 	}
-	if err := store.SetIntervals(storage.UserId(0), intervals); err != nil {
+	if err := store.SetIntervals(storage.UserID(0), intervals); err != nil {
 		t.Fatal(err)
 	}
 
@@ -620,15 +658,19 @@ func TestSolveConflict_UsesModifyIntervals(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SolveConflict returned error: %v", err)
 	}
+
 	if !conflict {
 		t.Fatal("expected conflict to be detected")
 	}
+
 	if store.modifyCalls != 1 {
 		t.Errorf("expected exactly 1 ModifyIntervals call, got %d", store.modifyCalls)
 	}
+
 	if store.addCalls != 0 {
 		t.Errorf("expected 0 AddInterval calls, got %d", store.addCalls)
 	}
+
 	if store.removeCalls != 0 {
 		t.Errorf("expected 0 RemoveInterval calls, got %d", store.removeCalls)
 	}
@@ -654,7 +696,7 @@ func TestSolveConflict_NoConflict_NoModifyIntervals(t *testing.T) {
 			Annotation: "",
 		},
 	}
-	if err := store.SetIntervals(storage.UserId(0), intervals); err != nil {
+	if err := store.SetIntervals(storage.UserID(0), intervals); err != nil {
 		t.Fatal(err)
 	}
 
@@ -662,9 +704,11 @@ func TestSolveConflict_NoConflict_NoModifyIntervals(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SolveConflict returned error: %v", err)
 	}
+
 	if conflict {
 		t.Fatal("expected no conflict")
 	}
+
 	if store.modifyCalls != 0 {
 		t.Errorf("expected 0 ModifyIntervals calls when no conflict, got %d", store.modifyCalls)
 	}
@@ -683,10 +727,12 @@ func TestUniteTagsAndAnnotation_AllEmpty(t *testing.T) {
 		Tags:       []string{},
 		Annotation: "",
 	}
+
 	tags, annotation := UniteTagsAndAnnotation(a, b)
 	if !reflect.DeepEqual(tags, []string{}) {
 		t.Errorf("AllEmpty: Tags do not match. Expected %v got %v", []string{}, tags)
 	}
+
 	if annotation != "" {
 		t.Errorf("AllEmpty: Annotation does not match. Expected %v got %v", "", annotation)
 	}
@@ -707,10 +753,12 @@ func TestUniteTagsAndAnnotation_DifferentAnnotations(t *testing.T) {
 	}
 	tagsExpected := []string{"a", "b", "tag_a", "tag_b"}
 	annotationExpected := ""
+
 	tags, annotation := UniteTagsAndAnnotation(a, b)
 	if !reflect.DeepEqual(tags, tagsExpected) {
 		t.Errorf("DifferentAnnotations: Tags do not match. Expected %v got %v", []string{}, tags)
 	}
+
 	if annotation != annotationExpected {
 		t.Errorf("DifferentAnnotations: Annotation does not match. Expected %v got %v", "", annotation)
 	}
@@ -731,10 +779,12 @@ func TestUniteTagsAndAnnotation_AnnotationAPresent(t *testing.T) {
 	}
 	tagsExpected := []string{"tag_a", "tag_b"}
 	annotationExpected := "a"
+
 	tags, annotation := UniteTagsAndAnnotation(a, b)
 	if !reflect.DeepEqual(tags, tagsExpected) {
 		t.Errorf("AnnotationAPresent: Tags do not match. Expected %v got %v", []string{}, tags)
 	}
+
 	if annotation != annotationExpected {
 		t.Errorf("AnnotationAPresent: Annotation does not match. Expected %v got %v", "", annotation)
 	}
@@ -755,10 +805,12 @@ func TestUniteTagsAndAnnotation_AnnotationBPresent(t *testing.T) {
 	}
 	tagsExpected := []string{"tag_a", "tag_b"}
 	annotationExpected := "b"
+
 	tags, annotation := UniteTagsAndAnnotation(a, b)
 	if !reflect.DeepEqual(tags, tagsExpected) {
 		t.Errorf("AnnotationBPresent: Tags do not match. Expected %v got %v", []string{}, tags)
 	}
+
 	if annotation != annotationExpected {
 		t.Errorf("AnnotationBPresent: Annotation does not match. Expected %v got %v", "", annotation)
 	}
@@ -779,10 +831,12 @@ func TestUniteTagsAndAnnotation_SameAnnotation(t *testing.T) {
 	}
 	tagsExpected := []string{"tag_a", "tag_b"}
 	annotationExpected := "same"
+
 	tags, annotation := UniteTagsAndAnnotation(a, b)
 	if !reflect.DeepEqual(tags, tagsExpected) {
 		t.Errorf("SameAnnotation: Tags do not match. Expected %v got %v", []string{}, tags)
 	}
+
 	if annotation != annotationExpected {
 		t.Errorf("SameAnnotation: Annotation does not match. Expected %v got %v", "", annotation)
 	}
@@ -803,10 +857,12 @@ func TestUniteTagsAndAnnotation_TagOverlap(t *testing.T) {
 	}
 	tagsExpected := []string{"a", "b", "tag_a", "tag_b", "tag_same"}
 	annotationExpected := ""
+
 	tags, annotation := UniteTagsAndAnnotation(a, b)
 	if !reflect.DeepEqual(tags, tagsExpected) {
 		t.Errorf("TagOverlap: Tags do not match. Expected %v got %v", []string{}, tags)
 	}
+
 	if annotation != annotationExpected {
 		t.Errorf("TagOverlap: Annotation does not match. Expected %v got %v", "", annotation)
 	}
@@ -827,10 +883,12 @@ func TestUniteTagsAndAnnotation_NoTagsDifferentAnnotation(t *testing.T) {
 	}
 	tagsExpected := []string{"a", "b"}
 	annotationExpected := ""
+
 	tags, annotation := UniteTagsAndAnnotation(a, b)
 	if !reflect.DeepEqual(tags, tagsExpected) {
 		t.Errorf("NoTagsDifferentAnnotation: Tags do not match. Expected %v got %v", []string{}, tags)
 	}
+
 	if annotation != annotationExpected {
 		t.Errorf("NoTagsDifferentAnnotation: Annotation does not match. "+
 			"Expected %v got %v", "", annotation)
@@ -852,10 +910,12 @@ func TestUniteTagsAndAnnotation_DifferentAnnotationsPresentInTags(t *testing.T) 
 	}
 	tagsExpected := []string{"a", "b", "x", "y", "z"}
 	annotationExpected := ""
+
 	tags, annotation := UniteTagsAndAnnotation(a, b)
 	if !reflect.DeepEqual(tags, tagsExpected) {
 		t.Errorf("NoTagsDifferentAnnotation: Tags do not match. Expected %v got %v", []string{}, tags)
 	}
+
 	if annotation != annotationExpected {
 		t.Errorf("NoTagsDifferentAnnotation: Annotation does not match. Expected %v got %v", "", annotation)
 	}

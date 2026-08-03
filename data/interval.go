@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-// layout used by timewarrior. Needed for time conversion. See e.g. time.Parse
+// Layout used by timewarrior. Needed for time conversion. See e.g. time.Parse.
 const timeLayout = "20060102T150405Z"
 
 // Interval represents a timewarrior interval.
@@ -82,8 +82,8 @@ func (interval Interval) ToJSONInterval() JSONInterval {
 	}
 }
 
-// Convenience wrapper around ToInterval() which batch processes a
-// slice of JSONInterval
+// FromJSONIntervals is a convenience wrapper around ToInterval() which batch processes a
+// slice of JSONInterval.
 func FromJSONIntervals(intervals []JSONInterval) ([]Interval, error) {
 	result := make([]Interval, len(intervals))
 
@@ -99,8 +99,8 @@ func FromJSONIntervals(intervals []JSONInterval) ([]Interval, error) {
 	return result, nil
 }
 
-// Convenience wrapper around ToJSONInterval() which batch processes a
-// slice of Interval
+// ToJSONIntervals is a convenience wrapper around ToJSONInterval() which batch processes a
+// slice of Interval.
 func ToJSONIntervals(intervals []Interval) []JSONInterval {
 	result := make([]JSONInterval, len(intervals))
 
@@ -132,13 +132,14 @@ func (interval Interval) String() string {
 	return interval.Serialize()
 }
 
-// IntervalsToStrings converts a slice of Interval structs to a slice of the corresponding timewarrior interval strings
-// Important: the LastModified information is not contained in the string representation
+// IntervalsToStrings converts a slice of Interval structs to a slice of the corresponding timewarrior interval strings.
+// Important: the LastModified information is not contained in the string representation.
 func IntervalsToStrings(intervals []Interval) []string {
 	result := make([]string, len(intervals))
 
 	for i, element := range intervals {
 		result[i] = element.Serialize()
 	}
+
 	return result
 }

@@ -22,11 +22,13 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+
 	"github.com/timewarrior-synchronize/timew-sync-server/data"
 )
 
 func TestEphemeralStorage(t *testing.T) {
 	var s Storage
+
 	intervals := []data.Interval{
 		{
 			Start:      time.Date(2020, time.December, 24, 18, 0, 0, 0, time.UTC),
@@ -52,6 +54,7 @@ func TestEphemeralStorage(t *testing.T) {
 				correct = true
 			}
 		}
+
 		if !correct {
 			t.Errorf("result: %v not as expected: %v They do not contain exactly the same elements", result, intervals)
 		}
@@ -60,6 +63,7 @@ func TestEphemeralStorage(t *testing.T) {
 
 func TestEphemeralStorage_ModifyIntervals(t *testing.T) {
 	var s Storage
+
 	add := []data.Interval{
 		{
 			Start:      time.Date(2020, 0o1, 0o1, 12, 0, 0, 0, time.UTC),
@@ -94,6 +98,7 @@ func TestEphemeralStorage_ModifyIntervals(t *testing.T) {
 				correct = true
 			}
 		}
+
 		if !correct {
 			t.Errorf("result: %v not as expected: %v They do not contain exactly the same elements", result, add)
 		}
@@ -134,6 +139,7 @@ func TestEphemeral_ModifyIntervals_add(t *testing.T) {
 				correct = true
 			}
 		}
+
 		if !correct {
 			t.Errorf("result: %v not as expected: %v They do not contain exactly the same elements", result, add)
 		}

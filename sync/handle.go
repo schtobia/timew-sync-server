@@ -37,12 +37,14 @@ type ServerConfig struct {
 func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+
 		return
 	}
 
 	requestBody, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("Error reading HTTP request, ignoring request: %v", err)
+
 		return
 	}
 
@@ -54,6 +56,7 @@ func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Reque
 			Details: err.Error(),
 		}
 		sendResponse(w, http.StatusBadRequest, errorResponse.ToString())
+
 		return
 	}
 
@@ -66,6 +69,7 @@ func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Reque
 				Details: "",
 			}
 			sendResponse(w, http.StatusUnauthorized, errorResponse.ToString())
+
 			return
 		}
 	}
@@ -78,6 +82,7 @@ func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Reque
 			Details: err.Error(),
 		}
 		sendResponse(w, http.StatusInternalServerError, errorResponse.ToString())
+
 		return
 	}
 
@@ -89,15 +94,16 @@ func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Reque
 			Details: err.Error(),
 		}
 		sendResponse(w, http.StatusInternalServerError, errorResponse.ToString())
+
 		return
 	}
 
 	sendResponse(w, http.StatusOK, responseBody)
 }
 
-// sendResponse writes data to response buffer
+// sendResponse writes data to response buffer.
 func sendResponse(w http.ResponseWriter, statusCode int, data string) {
-	w.Header().Set("content-type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
 
 	_, err := io.WriteString(w, data)

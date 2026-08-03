@@ -40,6 +40,7 @@ func TestGetUsedUserIDs_WithFiles(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
 	if err := os.WriteFile(filepath.Join(tmpDir, "notakey"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -48,6 +49,7 @@ func TestGetUsedUserIDs_WithFiles(t *testing.T) {
 	if len(ids) != 3 {
 		t.Errorf("expected 3 ids, got %d", len(ids))
 	}
+
 	for _, id := range []int64{0, 2, 5} {
 		if !ids[id] {
 			t.Errorf("expected id %d to be present", id)

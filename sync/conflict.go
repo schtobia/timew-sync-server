@@ -26,14 +26,16 @@ import (
 )
 
 // SolveConflict merges overlapping intervals of given user.
-// It then updates userID's state in store accordingly
-// SolveConflict returns true iff a conflict was detected
+// It then updates userID's state in store accordingly.
+// SolveConflict returns true iff a conflict was detected.
 func SolveConflict(userID int64, store storage.Storage) (bool, error) {
 	conflictDetected := false
-	intervals, err := store.GetIntervals(storage.UserId(userID))
+	intervals, err := store.GetIntervals(storage.UserID(userID))
 
 	var removed []data.Interval
+
 	var added []data.Interval
+
 	if err != nil {
 		return false, fmt.Errorf("getting intervals for user %d: %w", userID, err)
 	}
@@ -48,8 +50,9 @@ func SolveConflict(userID int64, store storage.Storage) (bool, error) {
 	}
 
 	openInterval := intervals[0]
-	var nextInterval data.Interval
+
 	intervals = intervals[1:] // treat as interval queue sorted by start time
+
 	var addedThisIteration []data.Interval
 
 	// loop invariant:
@@ -67,87 +70,31 @@ func SolveConflict(userID int64, store storage.Storage) (bool, error) {
 			// standard case - no conflict
 			openInterval = interval
 		} else {
-			// If two intervals (in this case openInterval and interval) are in conflict, both intervals are removed and
-			// one to three new intervals are created.
-			//
-			// The "middle" interval is always created, e.g. an interval with the last start time and first end time of
-			// the two conflicting intervals. If both conflicting intervals have equal start start times and equal end
-			// times, only this middle interval is created.
-			//
-			// The "end" interval is created iff both conflicting intervals do not share the same end time. It starts
-			// with the earlier end time and ends with the later end time of the conflicting intervals.
-			//
-			// The "start" interval is created iff both conflicting intervals do not share the same start time. It
-			// starts with the earlier start time and ends with the later start time of the conflicting intervals.
-			//
-			// The Tags and Annotation fields of the created intervals are:
-			//	(1) just the Tags and Annotation fields of the interval that includes the timespan of the created
-			//		created interval (iff only one such interval exists)
-			//	(2) the merged Tags and Annotation of both intervals as specified in UniteTagsAndAnnotation else
 			conflictDetected = true
+
 			removed = append(removed, openInterval, interval)
 
-			// end section (if exists)
-			if !openInterval.End.Equal(interval.End) {
-				if openInterval.End.After(interval.End) {
-					nextInterval = data.Interval{
-						Start:      interval.End,
-						End:        openInterval.End,
-						Tags:       openInterval.Tags,
-						Annotation: openInterval.Annotation,
-					}
-				} else {
-					nextInterval = data.Interval{
-						Start:      openInterval.End,
-						End:        interval.End,
-						Tags:       interval.Tags,
-						Annotation: interval.Annotation,
-					}
-				}
-				addedThisIteration = append(addedThisIteration, nextInterval)
+			endInterval, middleInterval, startInterval := resolveConflict(openInterval, interval)
+
+			if endInterval != nil {
+				addedThisIteration = append(addedThisIteration, *endInterval)
 			}
 
-			// middle section
-			tags, annotation := UniteTagsAndAnnotation(openInterval, interval)
-			if openInterval.End.After(interval.End) {
-				nextInterval = data.Interval{
-					Start: interval.Start, // We have to use this start time since this is the middle section and
-					// and interval.Start >= openInterval.Start by loop invariant
-					End:        interval.End,
-					Tags:       tags,
-					Annotation: annotation,
-				}
-			} else {
-				nextInterval = data.Interval{
-					Start:      interval.Start,
-					End:        openInterval.End,
-					Tags:       tags,
-					Annotation: annotation,
-				}
-			}
-			addedThisIteration = append(addedThisIteration, nextInterval)
-
-			// start section
-			if !openInterval.Start.Equal(interval.Start) {
-				nextInterval = data.Interval{
-					Start:      openInterval.Start,
-					End:        interval.Start,
-					Tags:       openInterval.Tags,
-					Annotation: openInterval.Annotation,
-				}
-				addedThisIteration = append(addedThisIteration, nextInterval)
+			addedThisIteration = append(addedThisIteration, *middleInterval)
+			if startInterval != nil {
+				addedThisIteration = append(addedThisIteration, *startInterval)
 			}
 
 			// getting ready for next iteration
-			openInterval = nextInterval
+			openInterval = addedThisIteration[len(addedThisIteration)-1]
+
 			added = append(added, addedThisIteration...)
 
 			// reinsert newly created intervals
 			intervals = append(intervals, addedThisIteration[:len(addedThisIteration)-1]...)
 			sort.SliceStable(intervals, func(i, j int) bool {
 				return intervals[i].Start.Before(intervals[j].Start)
-			}) // Maybe just iterating from left to right over intervals and inserting at the correct time is faster,
-			// since intervals from addedThisIteration will probably have an "early" start time
+			})
 		}
 	}
 
@@ -157,7 +104,7 @@ func SolveConflict(userID int64, store storage.Storage) (bool, error) {
 
 	netAdd, netDel := computeNetDiff(added, removed)
 
-	if err := store.ModifyIntervals(storage.UserId(userID), netAdd, netDel); err != nil {
+	if err := store.ModifyIntervals(storage.UserID(userID), netAdd, netDel); err != nil {
 		return conflictDetected, fmt.Errorf("modifying intervals for user %d: %w", userID, err)
 	}
 
@@ -182,10 +129,13 @@ func computeNetDiff(added, removed []data.Interval) ([]data.Interval, []data.Int
 		if ac, ok := addedSet[key]; ok {
 			common := min(ac, rc)
 			addedSet[key] -= common
+
 			if addedSet[key] == 0 {
 				delete(addedSet, key)
 			}
+
 			removedSet[key] -= common
+
 			if removedSet[key] == 0 {
 				delete(removedSet, key)
 			}
@@ -198,7 +148,11 @@ func computeNetDiff(added, removed []data.Interval) ([]data.Interval, []data.Int
 	return netAdd, netDel
 }
 
-func filterBySet(intervals []data.Interval, keys []storage.IntervalKey, set map[storage.IntervalKey]int) []data.Interval {
+func filterBySet(
+	intervals []data.Interval,
+	keys []storage.IntervalKey,
+	set map[storage.IntervalKey]int,
+) []data.Interval {
 	var result []data.Interval
 	for i, key := range keys {
 		if set[key] > 0 {
@@ -206,7 +160,67 @@ func filterBySet(intervals []data.Interval, keys []storage.IntervalKey, set map[
 			set[key]--
 		}
 	}
+
 	return result
+}
+
+// resolveConflict resolves a conflict between two overlapping intervals.
+// It returns up to three new intervals: an optional "end" interval, a "middle" interval,
+// and an optional "start" interval.
+func resolveConflict(openInterval, interval data.Interval) (*data.Interval, *data.Interval, *data.Interval) {
+	var endInterval, middleInterval, startInterval *data.Interval
+
+	// end section (if exists)
+	if !openInterval.End.Equal(interval.End) {
+		var ei data.Interval
+		if openInterval.End.After(interval.End) {
+			ei = data.Interval{
+				Start:      interval.End,
+				End:        openInterval.End,
+				Tags:       openInterval.Tags,
+				Annotation: openInterval.Annotation,
+			}
+		} else {
+			ei = data.Interval{
+				Start:      openInterval.End,
+				End:        interval.End,
+				Tags:       interval.Tags,
+				Annotation: interval.Annotation,
+			}
+		}
+
+		endInterval = &ei
+	}
+
+	// middle section
+	tags, annotation := UniteTagsAndAnnotation(openInterval, interval)
+	if openInterval.End.After(interval.End) {
+		middleInterval = &data.Interval{
+			Start:      interval.Start,
+			End:        interval.End,
+			Tags:       tags,
+			Annotation: annotation,
+		}
+	} else {
+		middleInterval = &data.Interval{
+			Start:      interval.Start,
+			End:        openInterval.End,
+			Tags:       tags,
+			Annotation: annotation,
+		}
+	}
+
+	// start section (if exists)
+	if !openInterval.Start.Equal(interval.Start) {
+		startInterval = &data.Interval{
+			Start:      openInterval.Start,
+			End:        interval.Start,
+			Tags:       openInterval.Tags,
+			Annotation: openInterval.Annotation,
+		}
+	}
+
+	return endInterval, middleInterval, startInterval
 }
 
 // UniteTagsAndAnnotation computes the new tags and annotation for overlapping intervals and returns tags, annotation.
@@ -220,16 +234,22 @@ func UniteTagsAndAnnotation(a, b data.Interval) ([]string, string) {
 	tmp := make([]string, len(b.Tags))
 	copy(tags, a.Tags)
 	copy(tmp, b.Tags)
+
 	annotation := ""
+
 	tags = append(tags, tmp...)
-	if a.Annotation != "" && b.Annotation != "" && a.Annotation != b.Annotation {
+
+	switch {
+	case a.Annotation != "" && b.Annotation != "" && a.Annotation != b.Annotation:
 		tags = append(tags, a.Annotation, b.Annotation)
-	} else if a.Annotation == "" {
+	case a.Annotation == "":
 		annotation = b.Annotation
-	} else {
+	default:
 		annotation = a.Annotation
 	}
+
 	sort.Strings(tags)
+
 	i := 1
 	for i < len(tags) {
 		if tags[i] == tags[i-1] {
@@ -238,5 +258,6 @@ func UniteTagsAndAnnotation(a, b data.Interval) ([]string, string) {
 			i++
 		}
 	}
+
 	return tags, annotation
 }
