@@ -27,11 +27,15 @@ import (
 	"github.com/timewarrior-synchronize/timew-sync-server/storage"
 )
 
-var PublicKeyLocation string
+type ServerConfig struct {
+	Store       storage.Storage
+	KeyLocation string
+	NoAuth      bool
+}
 
 // HandleSyncRequest receives sync requests and starts the sync
 // process with the received data.
-func HandleSyncRequest(w http.ResponseWriter, req *http.Request, noAuth bool) {
+func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -55,8 +59,8 @@ func HandleSyncRequest(w http.ResponseWriter, req *http.Request, noAuth bool) {
 	}
 
 	// Authentication
-	if !noAuth {
-		authenticated := Authenticate(req, requestData)
+	if !cfg.NoAuth {
+		authenticated := Authenticate(req, requestData, cfg.KeyLocation)
 		if !authenticated {
 			errorResponse := ErrorResponseBody{
 				Message: "An error occurred during authentication",
@@ -67,7 +71,7 @@ func HandleSyncRequest(w http.ResponseWriter, req *http.Request, noAuth bool) {
 		}
 	}
 
-	syncData, conflict, err := Sync(requestData, storage.GlobalStorage)
+	syncData, conflict, err := Sync(requestData, cfg.Store)
 	if err != nil {
 		log.Printf("Synchronization failed, ignoring request: %v", err)
 		errorResponse := ErrorResponseBody{

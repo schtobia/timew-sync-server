@@ -25,11 +25,8 @@ import (
 
 func TestGetUsedUserIDs_Empty(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldLocation := PublicKeyLocation
-	PublicKeyLocation = tmpDir
-	defer func() { PublicKeyLocation = oldLocation }()
 
-	ids := GetUsedUserIDs()
+	ids := GetUsedUserIDs(tmpDir)
 	if len(ids) != 0 {
 		t.Errorf("expected empty map, got %v", ids)
 	}
@@ -37,9 +34,6 @@ func TestGetUsedUserIDs_Empty(t *testing.T) {
 
 func TestGetUsedUserIDs_WithFiles(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldLocation := PublicKeyLocation
-	PublicKeyLocation = tmpDir
-	defer func() { PublicKeyLocation = oldLocation }()
 
 	for _, name := range []string{"0_keys", "2_keys", "5_keys"} {
 		if err := os.WriteFile(filepath.Join(tmpDir, name), []byte("key"), 0o644); err != nil {
@@ -50,7 +44,7 @@ func TestGetUsedUserIDs_WithFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ids := GetUsedUserIDs()
+	ids := GetUsedUserIDs(tmpDir)
 	if len(ids) != 3 {
 		t.Errorf("expected 3 ids, got %d", len(ids))
 	}
@@ -63,11 +57,8 @@ func TestGetUsedUserIDs_WithFiles(t *testing.T) {
 
 func TestGetFreeUserID_Empty(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldLocation := PublicKeyLocation
-	PublicKeyLocation = tmpDir
-	defer func() { PublicKeyLocation = oldLocation }()
 
-	id := GetFreeUserID()
+	id := GetFreeUserID(tmpDir)
 	if id != 0 {
 		t.Errorf("expected 0, got %d", id)
 	}
@@ -75,9 +66,6 @@ func TestGetFreeUserID_Empty(t *testing.T) {
 
 func TestGetFreeUserID_WithGap(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldLocation := PublicKeyLocation
-	PublicKeyLocation = tmpDir
-	defer func() { PublicKeyLocation = oldLocation }()
 
 	for _, name := range []string{"0_keys", "1_keys", "3_keys"} {
 		if err := os.WriteFile(filepath.Join(tmpDir, name), []byte("key"), 0o644); err != nil {
@@ -85,7 +73,7 @@ func TestGetFreeUserID_WithGap(t *testing.T) {
 		}
 	}
 
-	id := GetFreeUserID()
+	id := GetFreeUserID(tmpDir)
 	if id != 2 {
 		t.Errorf("expected 2, got %d", id)
 	}
@@ -93,9 +81,6 @@ func TestGetFreeUserID_WithGap(t *testing.T) {
 
 func TestGetFreeUserID_StartingFromZero(t *testing.T) {
 	tmpDir := t.TempDir()
-	oldLocation := PublicKeyLocation
-	PublicKeyLocation = tmpDir
-	defer func() { PublicKeyLocation = oldLocation }()
 
 	for _, name := range []string{"1_keys", "2_keys"} {
 		if err := os.WriteFile(filepath.Join(tmpDir, name), []byte("key"), 0o644); err != nil {
@@ -103,7 +88,7 @@ func TestGetFreeUserID_StartingFromZero(t *testing.T) {
 		}
 	}
 
-	id := GetFreeUserID()
+	id := GetFreeUserID(tmpDir)
 	if id != 0 {
 		t.Errorf("expected 0, got %d", id)
 	}

@@ -111,5 +111,3 @@ type Storage interface {
 	// RemoveInterval removes an interval from a user's intervals
 	RemoveInterval(userId UserId, interval data.Interval) error
 }
-
-var GlobalStorage Storage

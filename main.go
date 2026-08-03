@@ -71,7 +71,6 @@ func main() {
 	switch os.Args[1] {
 	case "start":
 		_ = startCmd.Parse(os.Args[2:])
-		sync.PublicKeyLocation = keyDirectoryPath
 	case "add-user":
 		addUserCase(addUserCmd)
 	case "add-key":
@@ -97,10 +96,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error while initializing database: %v", err)
 	}
-	storage.GlobalStorage = sqlStorage
+
+	cfg := &sync.ServerConfig{
+		Store:       sqlStorage,
+		KeyLocation: keyDirectoryPath,
+		NoAuth:      noAuth,
+	}
 
 	syncHandler := func(w http.ResponseWriter, req *http.Request) {
-		sync.HandleSyncRequest(w, req, noAuth)
+		sync.HandleSyncRequest(cfg, w, req)
 	}
 	healthHandler := func(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprint(w, "OK")
@@ -123,13 +127,12 @@ func main() {
 // Subcommand for adding a new user
 func addUserCase(addUserCmd *flag.FlagSet) {
 	_ = addUserCmd.Parse(os.Args[2:])
-	sync.PublicKeyLocation = keyDirectoryPath
-	id := sync.GetFreeUserID()
+	id := sync.GetFreeUserID(keyDirectoryPath)
 	if sourcePath == "" {
-		sync.AddKey(id, "")
+		sync.AddKey(keyDirectoryPath, id, "")
 	} else {
 		key := sync.ReadKey(sourcePath)
-		sync.AddKey(id, key)
+		sync.AddKey(keyDirectoryPath, id, key)
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "Successfully added new user %v", id)
 	os.Exit(0)
@@ -138,19 +141,18 @@ func addUserCase(addUserCmd *flag.FlagSet) {
 // Subcommand for adding a new key
 func addKeyCase(addKeyCmd *flag.FlagSet) {
 	_ = addKeyCmd.Parse(os.Args[2:])
-	sync.PublicKeyLocation = keyDirectoryPath
 	if sourcePath == "" {
 		log.Fatal("Provide a key file with --path [path-to-key-file]")
 	}
 	if userID < 0 {
 		log.Fatal("Provide a non-negative user id with --id [user id]")
 	}
-	used := sync.GetUsedUserIDs()
+	used := sync.GetUsedUserIDs(keyDirectoryPath)
 	if !used[userID] {
 		log.Fatalf("User %v does not exist", userID)
 	}
 	key := sync.ReadKey(sourcePath)
-	sync.AddKey(userID, key)
+	sync.AddKey(keyDirectoryPath, userID, key)
 	_, _ = fmt.Fprintf(os.Stderr, "Successfully added new key to user %v", userID)
 	os.Exit(0)
 }

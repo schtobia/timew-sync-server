@@ -27,9 +27,9 @@ import (
 )
 
 // GetUsedUserIDs returns a map containing every user id with an existing file [user id]_keys
-// in PublicKeyLocation directory
-func GetUsedUserIDs() map[int64]bool {
-	files, err := os.ReadDir(PublicKeyLocation)
+// in keyLocation directory
+func GetUsedUserIDs(keyLocation string) map[int64]bool {
+	files, err := os.ReadDir(keyLocation)
 	if err != nil {
 		log.Fatal("Error accessing keys-location directory")
 	}
@@ -52,8 +52,8 @@ func GetUsedUserIDs() map[int64]bool {
 }
 
 // GetFreeUserID returns the smallest valid unused user id
-func GetFreeUserID() int64 {
-	used := GetUsedUserIDs()
+func GetFreeUserID(keyLocation string) int64 {
+	used := GetUsedUserIDs(keyLocation)
 	for i := int64(0); i >= 0; i++ {
 		if !used[i] {
 			return i
@@ -73,13 +73,13 @@ func ReadKey(path string) string {
 }
 
 // AddKey adds the given key to the key file of the given user
-func AddKey(userID int64, key string) {
+func AddKey(keyLocation string, userID int64, key string) {
 	if userID < 0 {
 		log.Fatal("Error adding key. Negative user id not allowed")
 	}
 
 	destFileName := fmt.Sprintf("%d_keys", userID)
-	destFile, err := os.OpenFile(filepath.Join(PublicKeyLocation, destFileName), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o644)
+	destFile, err := os.OpenFile(filepath.Join(keyLocation, destFileName), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o644)
 	if err != nil {
 		log.Fatalf("Error adding key. Unable to create new key file or write to existing key file with user id %v", userID)
 	}

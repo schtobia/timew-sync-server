@@ -32,15 +32,14 @@ import (
 
 // Authenticate returns true iff the JWT specified in the HTTP requests' Bearer token was signed by the correct user.
 // If any step of the authentication process fails or there is no matching public key, Authenticate returns false
-func Authenticate(r *http.Request, body data.SyncRequest) bool {
-	keySet, err := GetKeySet(body.UserID)
+func Authenticate(r *http.Request, body data.SyncRequest, keyLocation string) bool {
+	keySet, err := GetKeySet(body.UserID, keyLocation)
 	if err != nil {
 		log.Printf("Error during Authentication. Unable to obtain keys for user %v", body.UserID)
 		return false
 	}
 
 	return AuthenticateWithKeySet(r, body.UserID, keySet)
-
 }
 
 // AuthenticateWithKeySet returns true iff the JWT in the Bearer token can be validated in verified with a key in the
@@ -74,9 +73,9 @@ func AuthenticateWithKeySet(r *http.Request, userID int64, keySet jwk.Set) bool 
 
 // GetKeySet returns the key set of user with a given userId. Returns an error if the keys file of that user was not
 // found or could not be parsed.
-func GetKeySet(userId int64) (jwk.Set, error) {
+func GetKeySet(userId int64, keyLocation string) (jwk.Set, error) {
 	filename := fmt.Sprintf("%d_keys", userId)
-	path := filepath.Join(PublicKeyLocation, filename)
+	path := filepath.Join(keyLocation, filename)
 
 	keySet, err := jwk.ReadFile(path, jwk.WithPEM(true))
 	if err != nil {
