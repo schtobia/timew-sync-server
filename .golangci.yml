@@ -1,0 +1,80 @@
+version: "2"
+linters:
+  default: all
+  enable:
+    - gomodguard_v2
+    - wsl_v5
+
+  disable:
+    # deprecated: none
+    - wsl
+    - gomodguard
+
+  settings:
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: true
+      branch-max-lines: 2
+    depguard:
+      rules:
+        main:
+          allow:
+            - $gostd
+            - github.com/DATA-DOG/go-sqlmock
+            - github.com/golang-migrate/migrate/v4
+            - github.com/google/go-cmp
+            - github.com/lestrrat-go/jwx
+            - github.com/mattn/go-sqlite3
+            - github.com/decred/dcrd/dcrec/secp256k1/v4
+            - github.com/goccy/go-json
+            - github.com/lestrrat-go/backoff/v2
+            - github.com/lestrrat-go/blackmagic
+            - github.com/lestrrat-go/httpcc
+            - github.com/lestrrat-go/iter
+            - github.com/lestrrat-go/option
+            - github.com/pkg/errors
+            - golang.org/x/crypto
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+
+  settings:
+    gci:
+      # Section configuration to compare against.
+      # Section names are case-insensitive and may contain parameters in ().
+      # The default order of sections is `standard > default > custom > blank > dot`,
+      # If `custom-order` is `true`, it follows the order of `sections` option.
+      # Default: ["standard", "default"]
+      sections:
+        - standard # Standard section: captures all standard packages.
+        - default # Default section: contains all imports that could not be matched to another section type.
+        - prefix(github.com/timewarrior-synchronize/timew-sync-server) # Custom section: groups all imports with the specified Prefix.
+        #- blank # Blank section: contains all blank imports. This section is not present unless explicitly enabled.
+        #- dot # Dot section: contains all dot imports. This section is not present unless explicitly enabled.
+      # Enable custom order of sections.
+      # If `true`, make the section order the same as the order of `sections`.
+      # Default: false
+      custom-order: true
+
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
