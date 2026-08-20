@@ -18,11 +18,31 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 package sync
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/timewarrior-synchronize/timew-sync-server/data"
+	"github.com/timewarrior-synchronize/timew-sync-server/storage"
 )
+
+const secretMarker = "secret database error marker"
+
+// errStoreFailure simulates an internal storage error that must never
+// be forwarded to the client.
+var errStoreFailure = errors.New(secretMarker)
+
+// failingStore fails all interval modifications with an error that
+// must never be forwarded to the client.
+type failingStore struct {
+	storage.Ephemeral
+}
+
+func (s *failingStore) ModifyIntervals(storage.UserID, []data.Interval, []data.Interval) error {
+	return errStoreFailure
+}
 
 func TestSendResponse(t *testing.T) {
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
@@ -39,6 +59,29 @@ func TestSendResponse(t *testing.T) {
 	if rr.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), expected)
+	}
+}
+
+func TestHandleSyncRequest_NoErrorLeak(t *testing.T) {
+	store := &failingStore{}
+	if err := store.Initialize(); err != nil {
+		t.Fatalf("initializing store: %v", err)
+	}
+
+	cfg := &ServerConfig{Store: store, NoAuth: true}
+	body := strings.NewReader(`{"userID":0,"added":[],"removed":[]}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/sync", body)
+	rr := httptest.NewRecorder()
+
+	HandleSyncRequest(cfg, rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusInternalServerError)
+	}
+
+	if strings.Contains(rr.Body.String(), secretMarker) {
+		t.Errorf("internal error details leaked to client: %v", rr.Body.String())
 	}
 }
 

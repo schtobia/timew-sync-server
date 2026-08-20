@@ -65,9 +65,10 @@ func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Reque
 	requestData, err := data.ParseSyncRequest(string(requestBody))
 	if err != nil {
 		log.Printf("Error parsing sync request, ignoring request: %v", err)
+
 		errorResponse := ErrorResponseBody{
 			Message: "An error occurred while parsing the request",
-			Details: err.Error(),
+			Details: "",
 		}
 		sendResponse(w, http.StatusBadRequest, errorResponse.ToString())
 
@@ -91,9 +92,10 @@ func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Reque
 	syncData, conflict, err := Sync(requestData, cfg.Store)
 	if err != nil {
 		log.Printf("Synchronization failed, ignoring request: %v", err)
+
 		errorResponse := ErrorResponseBody{
 			Message: "An error occurred while performing the synchronization",
-			Details: err.Error(),
+			Details: "",
 		}
 		sendResponse(w, http.StatusInternalServerError, errorResponse.ToString())
 
@@ -103,9 +105,10 @@ func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Reque
 	responseBody, err := data.ToJSON(syncData, conflict)
 	if err != nil {
 		log.Printf("Error creating response JSON, ignoring request: %v", err)
+
 		errorResponse := ErrorResponseBody{
 			Message: "An error occurred while creating the response",
-			Details: err.Error(),
+			Details: "",
 		}
 		sendResponse(w, http.StatusInternalServerError, errorResponse.ToString())
 
