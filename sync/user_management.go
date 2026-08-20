@@ -85,6 +85,10 @@ func AddKey(keyLocation string, userID int64, key string) {
 		log.Fatal("Error adding key. Negative user id not allowed")
 	}
 
+	if err := os.MkdirAll(keyLocation, keyDirPermissions); err != nil {
+		log.Fatalf("Error adding key. Unable to create keys directory %v", keyLocation)
+	}
+
 	destFileName := fmt.Sprintf("%d_keys", userID)
 
 	destFile, err := os.OpenFile(
@@ -97,13 +101,20 @@ func AddKey(keyLocation string, userID int64, key string) {
 	}
 	defer destFile.Close()
 
+	// Enforce strict permissions even for key files that were created
+	// before this hardening was introduced.
+	if err := destFile.Chmod(keyFilePermissions); err != nil {
+		//nolint:gocritic // destFile is closed by OS on process exit
+		log.Fatalf("Error adding key. Unable to set permissions on key file with user id %v", userID)
+	}
+
 	if key == "" {
 		return
 	}
 
 	stat, err := destFile.Stat()
 	if err != nil {
-		log.Fatal("Unable to obtain kye file length") //nolint:gocritic // destFile is closed by OS on process exit
+		log.Fatal("Unable to obtain kye file length")
 	}
 
 	if stat.Size() > 0 {

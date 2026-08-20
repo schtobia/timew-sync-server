@@ -34,7 +34,8 @@ import (
 const (
 	acceptableSkew      = time.Duration(10e10)
 	expectedFilenameLen = 2
-	keyFilePermissions  = 0o644
+	keyFilePermissions  = 0o600
+	keyDirPermissions   = 0o700
 )
 
 // Authenticate returns true iff the JWT specified in the HTTP requests' Bearer token was signed by the correct user.

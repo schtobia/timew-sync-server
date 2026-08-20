@@ -81,6 +81,44 @@ func TestGetFreeUserID_WithGap(t *testing.T) {
 	}
 }
 
+func TestAddKey_FilePermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Pre-create the key file with overly permissive permissions to
+	// verify that AddKey tightens them.
+	path := filepath.Join(tmpDir, "0_keys")
+	if err := os.WriteFile(path, []byte("oldkey\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	AddKey(tmpDir, 0, "newkey")
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("expected key file permissions 0600, got %o", perm)
+	}
+}
+
+func TestAddKey_DirectoryPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	keyLocation := filepath.Join(tmpDir, "nested", "keys")
+
+	AddKey(keyLocation, 0, "key")
+
+	info, err := os.Stat(keyLocation)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if perm := info.Mode().Perm(); perm != 0o700 {
+		t.Errorf("expected keys directory permissions 0700, got %o", perm)
+	}
+}
+
 func TestGetFreeUserID_StartingFromZero(t *testing.T) {
 	tmpDir := t.TempDir()
 
