@@ -107,9 +107,13 @@ func runStart(args []string) {
 		"Address the server will listen for connections on")
 	cmd.IntVar(&portNumber, "port", defaultPort, "Port on which the server will listen for connections")
 	cmd.StringVar(&keyDirectoryPath, "keys-location", "authorized_keys", "Path to the users' public keys")
-	cmd.BoolVar(&noAuth, "no-auth", false, "Run server without client authentication")
+	registerNoAuthFlag(cmd, &noAuth)
 	_ = cmd.Parse(args)
 	_ = configFilePath
+
+	if noAuth {
+		log.Printf("WARNING: client authentication is disabled")
+	}
 
 	db, err := storage.OpenSQLite(dbPath)
 	if err != nil {

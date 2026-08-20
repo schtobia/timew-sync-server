@@ -68,7 +68,7 @@ The `start` subcommand supports the following (optional) flags:
 - `--listen`: Specifies the address to listen on. Default: `127.0.0.1` (loopback only). Set to `0.0.0.0` to listen on all interfaces, e.g. when running in a container or behind a reverse proxy on another host.
 - `--port`: Specifies the port. Default: 8080
 - `--keys-location`: Specifies the folder holding the authorized keys. Default: `authorized_keys`
-- `--no-auth`: Deactivates client authentication. Only for testing purposes.
+- `--no-auth`: Deactivates client authentication. Only for testing purposes. Only available in builds compiled with `-tags debug`; release builds reject this flag.
 - `--sqlite-db`: Path to the sqlite database. Default: `db.sqlite`
 
 ## Adding users
