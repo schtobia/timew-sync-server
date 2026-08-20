@@ -22,4 +22,6 @@ COPY --from=build /bin/timew-sync-server /bin/timew-sync-server
 EXPOSE 8080
 
 ENTRYPOINT [ "/bin/timew-sync-server" ]
-CMD [ "start" ]
+# Listen on all interfaces so the port is reachable from outside the
+# container; the default is loopback only.
+CMD [ "start", "-listen", "0.0.0.0" ]

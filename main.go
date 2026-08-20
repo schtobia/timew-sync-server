@@ -21,8 +21,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/timewarrior-synchronize/timew-sync-server/storage"
@@ -33,6 +35,7 @@ const (
 	version = "1.2.0"
 
 	minArgs           = 2
+	defaultListen     = "127.0.0.1"
 	defaultPort       = 8080
 	readHeaderTimeout = 10 * time.Second
 	readTimeout       = 30 * time.Second
@@ -90,6 +93,7 @@ func realMain(args []string) int {
 func runStart(args []string) {
 	var (
 		configFilePath   string
+		listenAddress    string
 		portNumber       int
 		keyDirectoryPath string
 		dbPath           string
@@ -99,6 +103,8 @@ func runStart(args []string) {
 	cmd := flag.NewFlagSet("start", flag.ExitOnError)
 	cmd.StringVar(&configFilePath, "config-file", "", "[RESERVED, not used] Path to the configuration file")
 	cmd.StringVar(&dbPath, "sqlite-db", "db.sqlite", "Path to the SQLite database")
+	cmd.StringVar(&listenAddress, "listen", defaultListen,
+		"Address the server will listen for connections on")
 	cmd.IntVar(&portNumber, "port", defaultPort, "Port on which the server will listen for connections")
 	cmd.StringVar(&keyDirectoryPath, "keys-location", "authorized_keys", "Path to the users' public keys")
 	cmd.BoolVar(&noAuth, "no-auth", false, "Run server without client authentication")
@@ -134,9 +140,11 @@ func runStart(args []string) {
 	http.HandleFunc("/api/sync", syncHandler)
 	http.HandleFunc("/api/health", healthHandler)
 
-	log.Printf("Listening on Port %v", portNumber)
+	addr := net.JoinHostPort(listenAddress, strconv.Itoa(portNumber))
+	log.Printf("Listening on %v", addr)
+
 	srv := &http.Server{ //nolint:exhaustruct // optional fields are intentionally omitted
-		Addr:              fmt.Sprintf(":%v", portNumber),
+		Addr:              addr,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
