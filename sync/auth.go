@@ -18,6 +18,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 package sync
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,7 +33,7 @@ import (
 )
 
 const (
-	acceptableSkew      = time.Duration(10e10)
+	acceptableSkew      = 30 * time.Second
 	expectedFilenameLen = 2
 	keyFilePermissions  = 0o600
 	keyDirPermissions   = 0o700
@@ -61,7 +62,8 @@ func AuthenticateWithKeySet(r *http.Request, userID int64, keySet jwk.Set) bool 
 		}
 
 		token, err := jwt.ParseHeader(r.Header, "Authorization", jwt.WithValidate(true),
-			jwt.WithKey(jwa.RS256(), key), jwt.WithAcceptableSkew(acceptableSkew))
+			jwt.WithKey(jwa.RS256(), key), jwt.WithAcceptableSkew(acceptableSkew),
+			jwt.WithRequiredClaim(jwt.ExpirationKey))
 		if err != nil {
 			continue
 		}
@@ -96,5 +98,34 @@ func GetKeySet(userID int64, keyLocation string) (jwk.Set, error) {
 		return nil, err
 	}
 
-	return keySet, nil
+	return filterKeySet(keySet), nil
+}
+
+// filterKeySet removes all keys that cannot verify RS256 signatures,
+// in particular symmetric ("oct") keys and private keys, which must
+// never be stored on the server.
+//
+//nolint:ireturn // returning the jwk.Set interface is idiomatic for the JWX library
+func filterKeySet(keySet jwk.Set) jwk.Set {
+	filtered := jwk.NewSet()
+
+	for i := range keySet.Len() {
+		key, ok := keySet.Key(i)
+		if !ok {
+			continue
+		}
+
+		var raw rsa.PublicKey
+		if err := jwk.Export(key, &raw); err != nil {
+			log.Printf("Ignoring key %d of key set: not an RSA public key: %v", i, err)
+
+			continue
+		}
+
+		if err := filtered.AddKey(key); err != nil {
+			log.Printf("Error adding key %d to filtered key set: %v", i, err)
+		}
+	}
+
+	return filtered
 }

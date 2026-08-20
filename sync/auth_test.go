@@ -21,7 +21,11 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -29,6 +33,65 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 )
+
+// setupKeySet creates a fresh RSA key pair and returns a key set
+// containing the public key together with the private signing key.
+//
+//nolint:ireturn // returning the jwk.Set interface is idiomatic for the JWX library
+func setupKeySet(t *testing.T) (jwk.Set, jwk.Key) {
+	t.Helper()
+
+	raw, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generating RSA key: %v", err)
+	}
+
+	priv, err := jwk.Import(raw)
+	if err != nil {
+		t.Fatalf("importing private key: %v", err)
+	}
+
+	pub, err := jwk.PublicKeyOf(priv)
+	if err != nil {
+		t.Fatalf("deriving public key: %v", err)
+	}
+
+	keySet := jwk.NewSet()
+	if err := keySet.AddKey(pub); err != nil {
+		t.Fatalf("adding public key to key set: %v", err)
+	}
+
+	return keySet, priv
+}
+
+// bearerRequest signs a token for the given user with the given key
+// and returns an HTTP request carrying it as Bearer token.
+func bearerRequest(t *testing.T, signingKey jwk.Key, userID int64, setExpiration func(jwt.Token)) *http.Request {
+	t.Helper()
+
+	token := jwt.New()
+	if err := token.Set("userID", userID); err != nil {
+		t.Fatalf("token.Set userID: %v", err)
+	}
+
+	if setExpiration != nil {
+		setExpiration(token)
+	}
+
+	payload, err := jwt.Sign(token, jwt.WithKey(jwa.RS256(), signingKey))
+	if err != nil {
+		t.Fatalf("signing token: %v", err)
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "", nil)
+	if err != nil {
+		t.Fatalf("creating request: %v", err)
+	}
+
+	req.Header.Add("Authorization", "Bearer "+string(payload))
+
+	return req
+}
 
 func TestAuthenticateWithKeySet_positive(t *testing.T) {
 	raw1, err1 := rsa.GenerateKey(rand.Reader, 2048)
@@ -169,5 +232,145 @@ func TestAuthenticateWithKeySet_IDMismatch(t *testing.T) {
 	b := AuthenticateWithKeySet(req, 0, keySet)
 	if b {
 		t.Errorf("Authenticated with mismatching userIDs")
+	}
+}
+
+func TestAuthenticateWithKeySet_NoExpiration(t *testing.T) {
+	keySet, priv := setupKeySet(t)
+
+	req := bearerRequest(t, priv, 42, nil)
+
+	if AuthenticateWithKeySet(req, 42, keySet) {
+		t.Errorf("Authenticated with jwt missing the required exp claim")
+	}
+}
+
+func TestAuthenticateWithKeySet_SkewExceeded(t *testing.T) {
+	keySet, priv := setupKeySet(t)
+
+	req := bearerRequest(t, priv, 42, func(token jwt.Token) {
+		if err := token.Set(jwt.ExpirationKey, time.Now().Add(-2*acceptableSkew)); err != nil {
+			t.Fatalf("token.Set expiration: %v", err)
+		}
+	})
+
+	if AuthenticateWithKeySet(req, 42, keySet) {
+		t.Errorf("Authenticated with jwt expired beyond the acceptable skew")
+	}
+}
+
+func TestAuthenticateWithKeySet_WithinSkew(t *testing.T) {
+	keySet, priv := setupKeySet(t)
+
+	req := bearerRequest(t, priv, 42, func(token jwt.Token) {
+		if err := token.Set(jwt.ExpirationKey, time.Now().Add(-acceptableSkew/2)); err != nil {
+			t.Fatalf("token.Set expiration: %v", err)
+		}
+	})
+
+	if !AuthenticateWithKeySet(req, 42, keySet) {
+		t.Errorf("Failed to authenticate with jwt expired within the acceptable skew")
+	}
+}
+
+func TestFilterKeySet(t *testing.T) {
+	raw, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generating RSA key: %v", err)
+	}
+
+	priv, err := jwk.Import(raw)
+	if err != nil {
+		t.Fatalf("importing private key: %v", err)
+	}
+
+	pub, err := jwk.PublicKeyOf(priv)
+	if err != nil {
+		t.Fatalf("deriving public key: %v", err)
+	}
+
+	oct, err := jwk.Import([]byte("symmetric-secret"))
+	if err != nil {
+		t.Fatalf("importing symmetric key: %v", err)
+	}
+
+	keySet := jwk.NewSet()
+	if err := keySet.AddKey(oct); err != nil {
+		t.Fatalf("adding symmetric key: %v", err)
+	}
+
+	if err := keySet.AddKey(priv); err != nil {
+		t.Fatalf("adding private key: %v", err)
+	}
+
+	if err := keySet.AddKey(pub); err != nil {
+		t.Fatalf("adding public key: %v", err)
+	}
+
+	filtered := filterKeySet(keySet)
+	if filtered.Len() != 1 {
+		t.Fatalf("expected 1 key after filtering, got %d", filtered.Len())
+	}
+
+	var want, got rsa.PublicKey
+	if err := jwk.Export(pub, &want); err != nil {
+		t.Fatalf("exporting expected public key: %v", err)
+	}
+
+	key, _ := filtered.Key(0)
+	if err := jwk.Export(key, &got); err != nil {
+		t.Fatalf("exporting filtered key: %v", err)
+	}
+
+	if want.N.Cmp(got.N) != 0 || want.E != got.E {
+		t.Errorf("filtered key does not match the RSA public key")
+	}
+}
+
+func TestGetKeySet_FiltersNonPublicKeys(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	raw, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generating RSA key: %v", err)
+	}
+
+	privDER, err := x509.MarshalPKCS8PrivateKey(raw)
+	if err != nil {
+		t.Fatalf("marshaling private key: %v", err)
+	}
+
+	pubDER, err := x509.MarshalPKIXPublicKey(&raw.PublicKey)
+	if err != nil {
+		t.Fatalf("marshaling public key: %v", err)
+	}
+
+	privPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privDER})
+	pubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubDER})
+
+	if err := os.WriteFile(filepath.Join(tmpDir, "0_keys"), privPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	keySet, err := GetKeySet(0, tmpDir)
+	if err != nil {
+		t.Fatalf("GetKeySet: %v", err)
+	}
+
+	if keySet.Len() != 0 {
+		t.Errorf("expected private key to be filtered, got %d keys", keySet.Len())
+	}
+
+	if err := os.WriteFile(filepath.Join(tmpDir, "1_keys"), pubPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	keySet, err = GetKeySet(1, tmpDir)
+	if err != nil {
+		t.Fatalf("GetKeySet: %v", err)
+	}
+
+	if keySet.Len() != 1 {
+		t.Errorf("expected public key to be kept, got %d keys", keySet.Len())
 	}
 }
