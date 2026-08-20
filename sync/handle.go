@@ -34,6 +34,7 @@ const maxRequestBodySize = 1 << 20
 type ServerConfig struct {
 	Store       storage.Storage
 	KeyLocation string
+	KeyCache    *KeyCache
 	NoAuth      bool
 }
 
@@ -77,7 +78,7 @@ func HandleSyncRequest(cfg *ServerConfig, w http.ResponseWriter, req *http.Reque
 
 	// Authentication
 	if !cfg.NoAuth {
-		authenticated := Authenticate(req, requestData, cfg.KeyLocation)
+		authenticated := cfg.Authenticate(req, requestData)
 		if !authenticated {
 			errorResponse := ErrorResponseBody{
 				Message: "An error occurred during authentication",

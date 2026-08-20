@@ -120,6 +120,7 @@ func runStart(args []string) {
 	cfg := &sync.ServerConfig{
 		Store:       sqlStorage,
 		KeyLocation: keyDirectoryPath,
+		KeyCache:    sync.NewKeyCache(),
 		NoAuth:      noAuth,
 	}
 

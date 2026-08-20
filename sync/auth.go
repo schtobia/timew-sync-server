@@ -41,10 +41,10 @@ const (
 
 // Authenticate returns true iff the JWT specified in the HTTP requests' Bearer token was signed by the correct user.
 // If any step of the authentication process fails or there is no matching public key, Authenticate returns false.
-func Authenticate(r *http.Request, body data.SyncRequest, keyLocation string) bool {
-	keySet, err := GetKeySet(body.UserID, keyLocation)
+func (cfg *ServerConfig) Authenticate(r *http.Request, body data.SyncRequest) bool {
+	keySet, err := cfg.GetKeySet(body.UserID)
 	if err != nil {
-		log.Printf("Error during Authentication. Unable to obtain keys for user %v", body.UserID)
+		log.Printf("Error during Authentication. Unable to obtain keys for user %v: %v", body.UserID, err)
 
 		return false
 	}
@@ -83,18 +83,30 @@ func AuthenticateWithKeySet(r *http.Request, userID int64, keySet jwk.Set) bool 
 	return false
 }
 
-// GetKeySet returns the key set of user with a given userID. Returns an error if the keys file of that user was not
-// found or could not be parsed.
+// GetKeySet returns the key set of user with a given userID. If a key
+// cache is configured, unchanged key files are only read from disk
+// once. Returns an error if the keys file of that user was not found
+// or could not be parsed.
 //
 //nolint:ireturn // returning the jwk.Set interface is idiomatic for the JWX library
-func GetKeySet(userID int64, keyLocation string) (jwk.Set, error) {
+func (cfg *ServerConfig) GetKeySet(userID int64) (jwk.Set, error) {
 	filename := fmt.Sprintf("%d_keys", userID)
-	path := filepath.Join(keyLocation, filename)
+	path := filepath.Join(cfg.KeyLocation, filename)
 
+	if cfg.KeyCache != nil {
+		return cfg.KeyCache.Get(path)
+	}
+
+	return loadKeySet(path)
+}
+
+// loadKeySet reads the key set stored at the given path and removes
+// all keys that cannot be used for verification.
+//
+//nolint:ireturn // returning the jwk.Set interface is idiomatic for the JWX library
+func loadKeySet(path string) (jwk.Set, error) {
 	keySet, err := jwk.ReadFile(path, jwk.WithPEM(true))
 	if err != nil {
-		log.Printf("Error parsing key set of user %d: %v", userID, err)
-
 		return nil, err
 	}
 

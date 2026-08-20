@@ -348,11 +348,13 @@ func TestGetKeySet_FiltersNonPublicKeys(t *testing.T) {
 	privPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privDER})
 	pubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubDER})
 
+	cfg := &ServerConfig{KeyLocation: tmpDir}
+
 	if err := os.WriteFile(filepath.Join(tmpDir, "0_keys"), privPEM, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	keySet, err := GetKeySet(0, tmpDir)
+	keySet, err := cfg.GetKeySet(0)
 	if err != nil {
 		t.Fatalf("GetKeySet: %v", err)
 	}
@@ -365,7 +367,7 @@ func TestGetKeySet_FiltersNonPublicKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	keySet, err = GetKeySet(1, tmpDir)
+	keySet, err = cfg.GetKeySet(1)
 	if err != nil {
 		t.Fatalf("GetKeySet: %v", err)
 	}
