@@ -18,6 +18,7 @@ package storage
 
 import (
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,6 +29,32 @@ import (
 )
 
 var errArtificial = errors.New("artificial error")
+
+func TestOpenSQLite_Settings(t *testing.T) {
+	db, err := OpenSQLite(filepath.Join(t.TempDir(), "test.sqlite"))
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer db.Close()
+
+	var journalMode string
+	if err := db.QueryRowContext(t.Context(), "PRAGMA journal_mode").Scan(&journalMode); err != nil {
+		t.Fatalf("querying journal_mode: %v", err)
+	}
+
+	if journalMode != "wal" {
+		t.Errorf("expected journal_mode wal, got %q", journalMode)
+	}
+
+	var busyTimeout int
+	if err := db.QueryRowContext(t.Context(), "PRAGMA busy_timeout").Scan(&busyTimeout); err != nil {
+		t.Fatalf("querying busy_timeout: %v", err)
+	}
+
+	if busyTimeout != sqliteBusyTimeout {
+		t.Errorf("expected busy_timeout %d, got %d", sqliteBusyTimeout, busyTimeout)
+	}
+}
 
 func TestSql_GetIntervals(t *testing.T) {
 	db, mock, err := sqlmock.New()

@@ -18,15 +18,12 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 package main
 
 import (
-	"database/sql"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
-
-	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/timewarrior-synchronize/timew-sync-server/storage"
 	"github.com/timewarrior-synchronize/timew-sync-server/sync"
@@ -108,7 +105,7 @@ func runStart(args []string) {
 	_ = cmd.Parse(args)
 	_ = configFilePath
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := storage.OpenSQLite(dbPath)
 	if err != nil {
 		log.Fatalf("Error while opening SQLite database: %v", err)
 	}

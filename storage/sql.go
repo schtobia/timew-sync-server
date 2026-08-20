@@ -31,8 +31,46 @@ import (
 	"github.com/timewarrior-synchronize/timew-sync-server/data"
 )
 
+const (
+	// maxOpenConnections bounds the SQLite connection pool so the
+	// database does not run out of file handles under load.
+	maxOpenConnections = 8
+
+	// sqliteBusyTimeout is the time in milliseconds a connection waits
+	// for locks held by other connections instead of failing with
+	// "database is locked".
+	sqliteBusyTimeout = 10000
+)
+
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
+
+// OpenSQLite opens the SQLite database at the given path with hardened
+// settings: WAL journal mode allows concurrent readers alongside a
+// writer, the busy timeout lets connections wait for locks instead of
+// failing, and immediate transaction locks avoid reader-writer upgrade
+// deadlocks. The connection pool is bounded to limit resource usage.
+func OpenSQLite(path string) (*sql.DB, error) {
+	dsn := fmt.Sprintf("file:%s?_journal_mode=WAL&_busy_timeout=%d&_txlock=immediate", path, sqliteBusyTimeout)
+
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("sql_storage: opening database: %w", err)
+	}
+
+	db.SetMaxOpenConns(maxOpenConnections)
+	db.SetMaxIdleConns(maxOpenConnections)
+
+	// Ping forces a real connection so configuration errors surface at
+	// startup instead of on the first request.
+	if err := db.PingContext(context.Background()); err != nil {
+		_ = db.Close()
+
+		return nil, fmt.Errorf("sql_storage: connecting to database: %w", err)
+	}
+
+	return db, nil
+}
 
 type SQL struct {
 	LockerRoom
