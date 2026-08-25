@@ -18,37 +18,65 @@ package storage
 
 import (
 	"sync"
+	"time"
 )
+
+const cleanupDelay = 5 * time.Second
+
+type lockEntry struct {
+	mu   sync.Mutex
+	refs int
+}
 
 // A LockerRoom is a collection of Mutexes mapped to user ids.
 type LockerRoom struct {
 	globalLock sync.Mutex
-	locks      map[UserID]*sync.Mutex
+	locks      map[UserID]*lockEntry
 }
 
 // InitializeLockerRoom sets up this LockerRoom instance.
 func (lr *LockerRoom) InitializeLockerRoom() {
-	lr.locks = make(map[UserID]*sync.Mutex)
+	lr.locks = make(map[UserID]*lockEntry)
 }
 
 // Lock acquires the lock for this user id.
 func (lr *LockerRoom) Lock(userID UserID) {
-	lr.createUserIfNotExists(userID)
-
-	lr.locks[userID].Lock()
+	entry := lr.getOrCreateEntry(userID)
+	entry.mu.Lock()
 }
 
 // Unlock releases the lock for this user id.
 func (lr *LockerRoom) Unlock(userID UserID) {
-	lr.locks[userID].Unlock()
+	lr.globalLock.Lock()
+	entry := lr.locks[userID]
+	entry.refs--
+	lr.globalLock.Unlock()
+
+	entry.mu.Unlock()
+	lr.scheduleCleanup(userID)
 }
 
-// createUserIfNotExists creates an entry into the locks map if the user does not exist yet.
-func (lr *LockerRoom) createUserIfNotExists(userID UserID) {
+func (lr *LockerRoom) getOrCreateEntry(userID UserID) *lockEntry {
 	lr.globalLock.Lock()
 	defer lr.globalLock.Unlock()
 
 	if lr.locks[userID] == nil {
-		lr.locks[userID] = &sync.Mutex{}
+		lr.locks[userID] = &lockEntry{refs: 1} //nolint:exhaustruct // sync.Mutex has zero value
+	} else {
+		lr.locks[userID].refs++
 	}
+
+	return lr.locks[userID]
+}
+
+func (lr *LockerRoom) scheduleCleanup(userID UserID) {
+	time.AfterFunc(cleanupDelay, func() {
+		lr.globalLock.Lock()
+		defer lr.globalLock.Unlock()
+
+		entry := lr.locks[userID]
+		if entry != nil && entry.refs == 0 {
+			delete(lr.locks, userID)
+		}
+	})
 }
